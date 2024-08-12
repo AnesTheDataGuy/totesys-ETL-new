@@ -6,7 +6,7 @@ terraform {
     }
   }
     backend "s3" {
-    bucket = "[NEED TO MAKE IN CONSOLE]"
+    bucket = "duo-terraform-state-bucket" # testing 
     key = "de-s3-file-reader/terraform.tfstate"
     region = "eu-west-2"
   }
@@ -18,7 +18,7 @@ provider "aws" {
     tags = {
       ProjectName  = "ToteSys-Najdorf"
       DeployedFrom = "Terraform"
-      Repository   = "[Need to change]"
+      Repository   = "NEED TO CHANGE"
     }
   }
 }

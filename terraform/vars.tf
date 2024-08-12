@@ -1,21 +1,21 @@
 variable "lambda_bucket" {
     type = string
-    default = "ToteSys-Lambda-"
+    default = "totesys-lambda-"
 }
 
 variable "raw_data" {
     type = string
-    default = "ToteSys-Raw-Data-"
+    default = "totesys-raw-data-"
 }
 
 variable "processed_data" {
     type = string
-    default = "ToteSys-Raw-Data-"
+    default = "totesys-raw-data-"
 }
 
 variable "athena_queries" {
     type = string
-    default = "ToteSys-Raw-Data-"
+    default = "totesys-raw-data-"
 }
 
 variable "extract_lambda" {
@@ -35,5 +35,5 @@ variable "load_lambda" {
 
 variable "python_runtime" {
   type    = string
-  default = "3.12" 
+  default = "python3.12" 
 }
