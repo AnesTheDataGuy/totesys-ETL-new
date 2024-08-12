@@ -78,4 +78,4 @@ unit-test:
 run-checks: security-test run-black unit-test
 
 ## Runs all of file
-all: requirements dev-setup run-checks
+all: requirements lambda_requirements dev-setup run-checks
