@@ -38,6 +38,10 @@ endef
 requirements: create-environment
 	$(call execute_in_env, $(PIP) install -r ./requirements.txt)
 
+# Populates Layer folder with packages required for Lambda functions to run
+lambda_requirements: create-environment
+	$(call execute_in_env, $(PIP) install -r ./lambda_requirements.txt --target layer/python)
+
 ################################################################################################################
 # Set Up
 ## Install bandit
@@ -64,7 +68,7 @@ security-test:
 
 ## Run the black code check
 run-black:
-	$(call execute_in_env, black  ./src/*.py ./test/*.py)
+	$(call execute_in_env, black  ./src/lambda_functions/*.py ./test/*.py)
 
 ## Run the unit tests
 unit-test:
