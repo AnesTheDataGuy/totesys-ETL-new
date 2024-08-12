@@ -1,4 +1,3 @@
-
 #define variables
 locals {
   layer_zip_path    = "layer.zip"

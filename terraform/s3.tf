@@ -1,3 +1,12 @@
+resource "aws_s3_bucket" "lambda_bucket" {
+  bucket_prefix = var.raw_data
+
+  tags = {
+    Name        = "Ingested data storage (raw)"
+    Environment = "Dev"
+  }
+}
+
 resource "aws_s3_bucket" "raw_data" {
   bucket_prefix = var.raw_data
 
