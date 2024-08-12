@@ -131,6 +131,23 @@ data "aws_iam_policy_document" "x_ray_document" {
   }
 } # Step func - xray
 
+data "aws_iam_policy_document" "step_function_cw_document" {
+  statement {
+    actions = ["logs:CreateLogDelivery",
+      "logs:CreateLogStream",
+      "logs:GetLogDelivery",
+      "logs:UpdateLogDelivery",
+      "logs:DeleteLogDelivery",
+      "logs:ListLogDeliveries",
+      "logs:PutLogEvents",
+      "logs:PutResourcePolicy",
+      "logs:DescribeResourcePolicies",
+      "logs:DescribeLogGroups"
+    ]
+    resources = ["*"]
+  }
+} # Step func - Cloudwatch
+
 data "aws_iam_policy_document" "scheduler_document" {
   statement {
     actions = ["states:StartExecution"]
@@ -165,6 +182,11 @@ resource "aws_iam_policy" "xray_policy" {
   policy      = data.aws_iam_policy_document.x_ray_document.json
 } # Step Func - Policy
 
+resource "aws_iam_policy" "step_cw_policy" {
+  name_prefix = "step-func-cw-"
+  policy      = data.aws_iam_policy_document.step_function_cw_document.json
+} # Step Func - Policy
+
 resource "aws_iam_policy" "scheduler_policy" {
   name_prefix = "scheduler-policy-"
   policy      = data.aws_iam_policy_document.scheduler_document.json
@@ -194,6 +216,11 @@ resource "aws_iam_role_policy_attachment" "lambda_invoke_policy_attachment" {
 resource "aws_iam_role_policy_attachment" "xray_policy_attachment" {
   role       = aws_iam_role.iam_for_sfn.name
   policy_arn = aws_iam_policy.xray_policy.arn
+} # Step Func - Attach
+
+resource "aws_iam_role_policy_attachment" "step_function_cw_policy_attachment" {
+  role       = aws_iam_role.iam_for_sfn.name
+  policy_arn = aws_iam_policy.step_cw_policy.arn
 } # Step Func - Attach
 
 resource "aws_iam_role_policy_attachment" "scheduler_policy_attachment" {
