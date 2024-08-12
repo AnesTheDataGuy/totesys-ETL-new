@@ -5,6 +5,11 @@ terraform {
       version = "~> 5.0"
     }
   }
+    backend "s3" {
+    bucket = "[NEED TO MAKE IN CONSOLE]"
+    key = "de-s3-file-reader/terraform.tfstate"
+    region = "eu-west-2"
+  }
 }
 
 provider "aws" {
