@@ -79,4 +79,10 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
   }
 }
 EOF
+
+  logging_configuration {
+    log_destination        = aws_cloudwatch_log_group.errors_log_group.arn
+    include_execution_data = true
+    level                  = "ERROR"
+  }
 }
