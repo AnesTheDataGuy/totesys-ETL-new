@@ -1,4 +1,4 @@
-name: de-password-manager
+name: totesys-ETL
 
 on:
   push:
@@ -28,6 +28,10 @@ jobs:
           checkName: run-tests   # NOTE: this needs to be the same as the job name
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Echo the repository content
+        run: |
+        echo "Listing all files in the repository:"
+        ls 
 
   deploy-infrastructure:
     name: deploy-infrastructure
