@@ -1,4 +1,4 @@
-data "archive_file" "test_lambda_zip" {
+data "archive_file" "test_lambda" {
   type             = "zip"
   output_file_mode = "0666"
   source_file      = "${path.module}/../src/lambda_functions/test_lambda.py"
@@ -54,7 +54,7 @@ resource "aws_lambda_function" "test_lambda" { #Provision the lambda
   s3_bucket        = aws_s3_bucket.lambda_bucket.id
   s3_key           = aws_s3_object.test_lambda_zip.key
   function_name    = "test_lambda"
-  source_code_hash = data.archive_file.test_lambda_zip.output_base64sha256
+  source_code_hash = data.archive_file.test_lambda.output_base64sha256
   role             = aws_iam_role.lambda_role.arn
   layers           = [aws_lambda_layer_version.lambda_layer.arn]
   runtime          = var.python_runtime

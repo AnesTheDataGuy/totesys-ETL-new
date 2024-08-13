@@ -71,6 +71,15 @@ data "aws_iam_policy_document" "s3_list_bucket" {
   }
 } # Lambda - s3 buckets
 
+data "aws_iam_policy_document" "s3_list_all_buckets" {
+  statement {
+
+    actions = ["s3:ListAllMyBuckets"]
+
+    resources = ["*"]
+  }
+} # Lambda - list all s3 buckets
+
 data "aws_iam_policy_document" "s3_read_write_object" {
   statement {
 
@@ -167,6 +176,11 @@ resource "aws_iam_policy" "s3_list_bucket_policy" {
   policy      = data.aws_iam_policy_document.s3_list_bucket.json
 } # Lambda - Policy
 
+resource "aws_iam_policy" "s3_list_all_buckets_policy" {
+  name_prefix = "s3-all-bucket-policy-etl-lambdas-"
+  policy      = data.aws_iam_policy_document.s3_list_all_buckets.json
+} # Lambda - Policy
+
 resource "aws_iam_policy" "cw_policy" {
   name_prefix = "cloudwatch-policy-etl-lambdas-"
   policy      = data.aws_iam_policy_document.cw_document.json
@@ -201,6 +215,11 @@ resource "aws_iam_role_policy_attachment" "s3_read_write_object_policy_attachmen
 resource "aws_iam_role_policy_attachment" "s3_list_bucket_policy_attachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.s3_list_bucket_policy.arn
+} # Lambda - Attach
+
+resource "aws_iam_role_policy_attachment" "s3_list_all_buckets_policy_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.s3_list_all_buckets_policy.arn
 } # Lambda - Attach
 
 resource "aws_iam_role_policy_attachment" "cw_policy_attachment" {
