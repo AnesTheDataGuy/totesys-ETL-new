@@ -1,6 +1,6 @@
 # import pytest, boto3, os
 # from moto import mock_aws
-# from src.lambda_functions.extract import lambda_handler 
+# from src.lambda_functions.extract import lambda_handler
 
 # @pytest.fixture(scope="function")
 # def aws_credentials():
@@ -20,7 +20,7 @@
 
 # class DummyContext:
 #     pass
-    
+
 
 # #@pytest.mark.it("script succesfully finds database bucket")
 # #def test_connects_to_database_bucket():
@@ -44,4 +44,3 @@
 #     lambda_handler(event,context)
 #     listing = s3.list_buckets()
 #     print(listing)
-

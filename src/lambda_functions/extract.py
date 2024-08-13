@@ -27,11 +27,11 @@
 
 #         if bucket['Name'].startswith("totesys-raw-data-"):
 #             raw_data_bucket = bucket['Name']
-#             break 
-    
+#             break
+
 #     if raw_data_bucket:
 #         response = s3_client.upload_file(test_file_path, raw_data_bucket, "test_db.json")
-        
+
 #         conn = Connection(
 #             user= PG_USER,
 #             password= PG_PASSWORD,
@@ -39,6 +39,6 @@
 #             host= HOST,
 #             port= PORT
 #         )
-        
+
 def extract():
     pass
