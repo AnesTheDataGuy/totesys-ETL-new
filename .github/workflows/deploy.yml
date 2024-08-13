@@ -30,8 +30,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Echo the repository content
         run: |
-        echo "Listing all files in the repository:"
-        ls 
+          echo "Listing all files in the repository:"
+          ls 
 
   deploy-infrastructure:
     name: deploy-infrastructure
