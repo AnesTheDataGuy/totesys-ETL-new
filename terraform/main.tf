@@ -5,9 +5,9 @@ terraform {
       version = "~> 5.0"
     }
   }
-    backend "s3" {
-    bucket = "duo-terraform-state-bucket" # testing 
-    key = "de-s3-file-reader/terraform.tfstate"
+  backend "s3" {
+    bucket = "testing-backend-bucket-nc"
+    key    = "de-s3-file-reader/terraform.tfstate"
     region = "eu-west-2"
   }
 }
@@ -18,7 +18,7 @@ provider "aws" {
     tags = {
       ProjectName  = "ToteSys-Najdorf"
       DeployedFrom = "Terraform"
-      Repository   = "NEED TO CHANGE"
+      Repository   = "https://github.com/AnesTheDataGuy/totesys-ETL"
     }
   }
 }

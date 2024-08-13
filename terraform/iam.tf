@@ -1,15 +1,15 @@
 resource "aws_iam_role" "lambda_role" {
-    name_prefix         = "role-etl-lambda-"
-    assume_role_policy  = data.aws_iam_policy_document.lambda_assume_role_policy.json
+  name_prefix        = "role-etl-lambda-"
+  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role_policy.json
 } # Lambda - Role
 
 resource "aws_iam_role" "iam_for_sfn" {
-    name_prefix        = "role-etl-sfn-"
-    assume_role_policy = data.aws_iam_policy_document.state_machine_assume_role_policy.json
+  name_prefix        = "role-etl-sfn-"
+  assume_role_policy = data.aws_iam_policy_document.state_machine_assume_role_policy.json
 } # Step Func - Role
 
 resource "aws_iam_role" "iam_for_scheduler" {
-  name_prefix = "role-scheduler-"
+  name_prefix        = "role-scheduler-"
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume_role_policy.json
 } # Scheduler - Role
 
@@ -48,7 +48,7 @@ data "aws_iam_policy_document" "scheduler_assume_role_policy" {
     effect = "Allow"
 
     principals {
-      type = "Service"
+      type        = "Service"
       identifiers = ["scheduler.amazonaws.com"]
     }
 
@@ -70,6 +70,15 @@ data "aws_iam_policy_document" "s3_list_bucket" {
     ]
   }
 } # Lambda - s3 buckets
+
+data "aws_iam_policy_document" "s3_list_all_buckets" {
+  statement {
+
+    actions = ["s3:ListAllMyBuckets"]
+
+    resources = ["*"]
+  }
+} # Lambda - list all s3 buckets
 
 data "aws_iam_policy_document" "s3_read_write_object" {
   statement {
@@ -107,23 +116,23 @@ data "aws_iam_policy_document" "lambda_invoke_document" {
     actions = ["lambda:InvokeFunction"]
 
     resources = [
-        "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.extract_lambda}:*",
-        "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.transform_lambda}:*",
-        "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.load_lambda}:*",
-        "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.extract_lambda}",
-        "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.transform_lambda}",
-        "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.load_lambda}"
+      "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.extract_lambda}:*",
+      "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.transform_lambda}:*",
+      "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.load_lambda}:*",
+      "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.extract_lambda}",
+      "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.transform_lambda}",
+      "arn:aws:lambda:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:function:${var.load_lambda}"
     ]
   }
 } # Step func - Lambda invoke
 
 data "aws_iam_policy_document" "x_ray_document" {
   statement {
-     actions = ["xray:PutTraceSegments",
-                "xray:PutTelemetryRecords",
-                "xray:GetSamplingRules",
-                "xray:GetSamplingTargets"]
-     resources = ["*"]
+    actions = ["xray:PutTraceSegments",
+      "xray:PutTelemetryRecords",
+      "xray:GetSamplingRules",
+    "xray:GetSamplingTargets"]
+    resources = ["*"]
   }
 } # Step func - xray
 
@@ -137,18 +146,23 @@ data "aws_iam_policy_document" "scheduler_document" {
 
 
 resource "aws_iam_policy" "s3_read_write_object_policy" {
-    name_prefix = "s3-object-policy-etl-lambdas-"
-    policy = data.aws_iam_policy_document.s3_read_write_object.json
+  name_prefix = "s3-object-policy-etl-lambdas-"
+  policy      = data.aws_iam_policy_document.s3_read_write_object.json
 } # Lambda - Policy
 
 resource "aws_iam_policy" "s3_list_bucket_policy" {
-    name_prefix = "s3-bucket-policy-etl-lambdas-"
-    policy = data.aws_iam_policy_document.s3_list_bucket.json
+  name_prefix = "s3-bucket-policy-etl-lambdas-"
+  policy      = data.aws_iam_policy_document.s3_list_bucket.json
+} # Lambda - Policy
+
+resource "aws_iam_policy" "s3_list_all_buckets_policy" {
+  name_prefix = "s3-all-bucket-policy-etl-lambdas-"
+  policy      = data.aws_iam_policy_document.s3_list_all_buckets.json
 } # Lambda - Policy
 
 resource "aws_iam_policy" "cw_policy" {
-    name_prefix = "cloudwatch-policy-etl-lambdas-"
-    policy = data.aws_iam_policy_document.cw_document.json
+  name_prefix = "cloudwatch-policy-etl-lambdas-"
+  policy      = data.aws_iam_policy_document.cw_document.json
 } # Lambda - Policy
 
 resource "aws_iam_policy" "lambda_invoke_policy" {
@@ -163,7 +177,7 @@ resource "aws_iam_policy" "xray_policy" {
 
 resource "aws_iam_policy" "scheduler_policy" {
   name_prefix = "scheduler-policy-"
-  policy = data.aws_iam_policy_document.scheduler_document.json
+  policy      = data.aws_iam_policy_document.scheduler_document.json
 } # Scheduler - Policy
 
 
@@ -175,6 +189,11 @@ resource "aws_iam_role_policy_attachment" "s3_read_write_object_policy_attachmen
 resource "aws_iam_role_policy_attachment" "s3_list_bucket_policy_attachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.s3_list_bucket_policy.arn
+} # Lambda - Attach
+
+resource "aws_iam_role_policy_attachment" "s3_list_all_buckets_policy_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.s3_list_all_buckets_policy.arn
 } # Lambda - Attach
 
 resource "aws_iam_role_policy_attachment" "cw_policy_attachment" {
