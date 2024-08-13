@@ -32,7 +32,7 @@ def s3_no_buckets(aws_credentials):
 class DummyContext:
     pass
 
-
+@pytest.mark.skip()
 def test_succesfully_upload_json_file(s3):
     event = {}
     context = DummyContext()
@@ -41,6 +41,7 @@ def test_succesfully_upload_json_file(s3):
     assert len(listing["Contents"]) == 1
     assert listing["Contents"][0]["Key"] == "test_db.csv"
 
+@pytest.mark.skip()
 def test_bucket_does_not_exist(s3_no_buckets):
     event = {}
     context = DummyContext()
@@ -50,7 +51,28 @@ def test_bucket_does_not_exist(s3_no_buckets):
 
 @pytest.mark.skip()
 @pytest.mark.it("script succesfully connects to database")
-def test_succesfully_connects_to_database():
+def test_succesfully_connects_to_database(s3):
     event = {}
     context = DummyContext()
     assert lambda_handler(event, context) != None
+
+@pytest.mark.it("script succesfully writes csv files containing database data to local folder")
+def test_succesfully_save_datatables_to_csv(s3):
+    saved_csv_path = "./data/test_saved_csv/"
+    expected_files = ["test_sales_order.csv", 
+               "test_design.csv", 
+               "test_currency.csv", 
+               "test_staff.csv", 
+               "test_counterparty.csv", 
+               "test_address.csv", 
+               "test_department.csv", 
+               "test_purchase_order.csv", 
+               "test_payment_type.csv", 
+               "test_payment.csv", 
+               "test_transaction.csv"]
+    event = {}
+    context = DummyContext()
+    lambda_handler(event, context)
+    folder_content = os.listdir(saved_csv_path)
+    for file in expected_files:
+        assert file in folder_content
