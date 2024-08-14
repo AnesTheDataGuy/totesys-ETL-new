@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket = "testing-backend-bucket-nc" # testing 
+    bucket = "testing-backend-bucket-nc"
     key    = "de-s3-file-reader/terraform.tfstate"
     region = "eu-west-2"
   }
@@ -18,7 +18,7 @@ provider "aws" {
     tags = {
       ProjectName  = "ToteSys-Najdorf"
       DeployedFrom = "Terraform"
-      Repository   = "NEED TO CHANGE"
+      Repository   = "https://github.com/AnesTheDataGuy/totesys-ETL"
     }
   }
 }
