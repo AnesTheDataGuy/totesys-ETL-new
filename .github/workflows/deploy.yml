@@ -41,6 +41,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: run make
+      - name: Python Init
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.1'
+        uses: make lambda_requirements
       - name: Echo the repository content
         run: |
           echo "Listing all files in the repository:"
