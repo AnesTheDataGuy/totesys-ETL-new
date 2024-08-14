@@ -61,6 +61,16 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
           "BackoffRate": 2
         }
       ],
+      "Catch": [ {
+        "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "Runtime.HandlerNotFound"],
+        "Next": "SnsNotification"
+        } 
+      ],
       "Next": "Load Invoke"
     },
     "Load Invoke": {
@@ -83,6 +93,16 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
           "MaxAttempts": 3,
           "BackoffRate": 2
         }
+      ],
+      "Catch": [ {
+        "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "Runtime.HandlerNotFound"],
+        "Next": "SnsNotification"
+        } 
       ],
       "End": true
     },
