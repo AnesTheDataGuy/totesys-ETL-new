@@ -1,2 +1,2 @@
-def load():
+def lambda_handler(event, context):
     pass

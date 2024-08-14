@@ -40,5 +40,5 @@
 #             port= PORT
 #         )
 
-def extract():
+def lambda_handler(event, context):
     pass
