@@ -2,51 +2,51 @@ data "archive_file" "test_lambda" {
   type             = "zip"
   output_file_mode = "0666"
   source_file      = "${path.module}/../src/lambda_functions/test_lambda.py"
-  output_path      = "${path.module}/../test_lambda.zip"
+  output_path      = "${path.module}/../zip_code/test_lambda.zip"
 }
 
 data "archive_file" "extract_lambda" {
   type             = "zip"
   output_file_mode = "0666"
   source_file      = "${path.module}/../src/lambda_functions/extract.py"
-  output_path      = "${path.module}/../extract.zip"
+  output_path      = "${path.module}/../zip_code/extract.zip"
 }
 
 data "archive_file" "load_lambda" {
   type             = "zip"
   output_file_mode = "0666"
   source_file      = "${path.module}/../src/lambda_functions/load.py"
-  output_path      = "${path.module}/../load.zip"
+  output_path      = "${path.module}/../zip_code/load.zip"
 }
 
 data "archive_file" "transform_lambda" {
   type             = "zip"
   output_file_mode = "0666"
   source_file      = "${path.module}/../src/lambda_functions/transform.py"
-  output_path      = "${path.module}/../transform.zip"
+  output_path      = "${path.module}/../zip_code/transform.zip"
 }
 
 resource "aws_s3_object" "test_lambda_zip" { #Upload the lambda zip to lambda_bucket.
   bucket = aws_s3_bucket.lambda_bucket.bucket
-  source = "${path.module}/../test_lambda.zip"
+  source = "${path.module}/../zip_code/test_lambda.zip"
   key    = "test_lambda.zip"
 }
 
 resource "aws_s3_object" "extract_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
-  source = "${path.module}/../extract.zip"
+  source = "${path.module}/../zip_code/extract.zip"
   key    = "extract.zip"
 }
 
 resource "aws_s3_object" "load_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
-  source = "${path.module}/../load.zip"
+  source = "${path.module}/../zip_code/load.zip"
   key    = "load.zip"
 }
 
 resource "aws_s3_object" "transform_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
-  source = "${path.module}/../transform.zip"
+  source = "${path.module}/../zip_code/transform.zip"
   key    = "transform.zip"
 }
 
