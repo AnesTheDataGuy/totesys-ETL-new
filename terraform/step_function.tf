@@ -28,6 +28,16 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
           "BackoffRate": 2
         }
       ],
+      "Catch": [ {
+        "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException",
+            "Lambda.TooManyRequestsException",
+            "Runtime.HandlerNotFound"],
+        "Next": "SnsNotification"
+        } 
+      ],
       "Next": "Transform Invoke"
     },
     "Transform Invoke": {
@@ -74,6 +84,21 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
           "BackoffRate": 2
         }
       ],
+      "End": true
+    },
+    "SnsNotification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "${aws_sns_topic.error.arn}",
+        "Message.$": "$.Error",
+        "MessageAttributes": {
+          "notify": {
+            "DataType": "String",
+            "StringValue": "Send to SNS"
+          }
+        }
+      },
       "End": true
     }
   }
