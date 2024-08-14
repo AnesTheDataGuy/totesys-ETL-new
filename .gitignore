@@ -6,4 +6,4 @@ layer/*
 terraform/.terraform
 terraform/.terraform.lock.hcl
 *.zip
-data/test_saved_csv/8
+data/table_data/*
