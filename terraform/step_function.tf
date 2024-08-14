@@ -34,7 +34,8 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
             "Lambda.TooManyRequestsException",
-            "Runtime.HandlerNotFound"],
+            "Runtime.HandlerNotFound",
+            "States.Runtime"],
         "Next": "SnsNotification"
         } 
       ],
@@ -67,7 +68,8 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
             "Lambda.TooManyRequestsException",
-            "Runtime.HandlerNotFound"],
+            "Runtime.HandlerNotFound"
+            "States.Runtime"],
         "Next": "SnsNotification"
         } 
       ],
@@ -100,7 +102,8 @@ resource "aws_sfn_state_machine" "sfn_state_machine" {
             "Lambda.AWSLambdaException",
             "Lambda.SdkClientException",
             "Lambda.TooManyRequestsException",
-            "Runtime.HandlerNotFound"],
+            "Runtime.HandlerNotFound"
+            "States.Runtime"],
         "Next": "SnsNotification"
         } 
       ],
