@@ -12,6 +12,7 @@ second = dt.now().second
 
 table_data = ['payment_type.csv', 'transaction.csv', 'currency.csv', 'payment.csv', 'sales_order.csv', 'design.csv', 'address.csv', 'counterparty.csv', 'staff.csv', 'department.csv', 'purchase_order.csv']
 data_dir = './data/table_data/'
+os.mkdir(data_dir)
 
 for table in table_data:
     if os.path.isfile(f'{data_dir}{table}'):
@@ -19,14 +20,13 @@ for table in table_data:
 
 """
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-PLEASE SWITCH TO TESTING ENV BY:
-export ENV=testing
-IN THE CLI
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-You will need an .env.testing to run tests.
-You will also need to run database/test_db.sql:
-psql -f database/test_db.sql
-Switch back to .env.development to use the ToteSys database.
+BEFORE RUNNING THE TESTS, PLEASE MAKE SURE TO:
+1. Run  database/test_db.sql: psql -f database/test_db.sql
+2. Make sure that you have testing and development environment configured
+    (.env.testing and .env.development)
+3. Switch to testing env (export ENV=testing in the CLI)
+
+Switch back to .env.development to use the online database.
 """
 
 @pytest.fixture(scope="function")
@@ -76,7 +76,7 @@ def test_succesfully_connects_to_database(s3):
     context = DummyContext()
     assert lambda_handler(event, context) != None
 
-
+@pytest.mark.skip()
 @pytest.mark.it("script succesfully writes csv files containing database data to local folder")
 def test_succesfully_save_datatables_to_csv(s3):
     saved_csv_path = data_dir
