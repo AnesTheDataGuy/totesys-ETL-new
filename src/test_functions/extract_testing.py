@@ -69,7 +69,7 @@ def lambda_handler(event, context):
         for data_table in data_tables:
             query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{data_table}';"
             column_names = conn.run(query)
-            
+
             header = []
             for column in column_names:
                 header.append(column[0])
@@ -80,15 +80,15 @@ def lambda_handler(event, context):
             file_to_save = StringIO()
             file_data = [header] + data_rows
             csv.writer(file_to_save).writerows(file_data)
-            file_to_save = bytes(file_to_save.getvalue(), encoding='utf-8')
-            
+            file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
+
             try:
                 response = s3_client.put_object(
-                        Body=file_to_save,
-                        Bucket=raw_data_bucket,
-                        Key=f"{time_prefix}{data_table}.csv"
+                    Body=file_to_save,
+                    Bucket=raw_data_bucket,
+                    Key=f"{time_prefix}{data_table}.csv",
                 )
-                
+
             except ClientError as e:
                 logging.error(e)
                 return f"Failed to upload file"
@@ -98,12 +98,12 @@ def lambda_handler(event, context):
             ) as csvfile:
                 csvwriter = csv.writer(csvfile)
                 csvwriter.writerow(col_list)
-                csvwriter.writerows(data_rows)     
+                csvwriter.writerows(data_rows)
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
-                     
+
     except Error as e:
-        logging.error(e['M'])
+        logging.error(e["M"])
         return f"Connection to database failed: {e['M']}"
 
     finally:

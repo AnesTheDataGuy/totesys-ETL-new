@@ -59,7 +59,7 @@ resource "aws_lambda_function" "test_lambda" { #Provision the lambda
   layers           = [aws_lambda_layer_version.lambda_layer.arn]
   runtime          = var.python_runtime
   handler          = "test_lambda.lambda_handler"
-  timeout          = 10
+  timeout          = 120
 }
 
 resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
@@ -71,7 +71,7 @@ resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
   layers           = [aws_lambda_layer_version.lambda_layer.arn]
   runtime          = var.python_runtime
   handler          = "extract.lambda_handler"
-  timeout          = 10
+  timeout          = 120
 }
 
 resource "aws_lambda_function" "load_lambda" { #Provision the lambda
@@ -83,7 +83,7 @@ resource "aws_lambda_function" "load_lambda" { #Provision the lambda
   layers           = [aws_lambda_layer_version.lambda_layer.arn]
   runtime          = var.python_runtime
   handler          = "load.lambda_handler"
-  timeout          = 10
+  timeout          = 120
 }
 
 resource "aws_lambda_function" "transform_lambda" { #Provision the lambda
@@ -95,5 +95,5 @@ resource "aws_lambda_function" "transform_lambda" { #Provision the lambda
   layers           = [aws_lambda_layer_version.lambda_layer.arn]
   runtime          = var.python_runtime
   handler          = "transform.lambda_handler"
-  timeout          = 10
+  timeout          = 120
 }
