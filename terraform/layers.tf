@@ -3,12 +3,12 @@ data "archive_file" "layer" { # create a deployment package for the layer.
   type             = "zip"
   output_file_mode = "0666"
   source_dir      = "${path.module}/../layer" 
-  output_path      = "${path.module}/../layer.zip"
+  output_path      = "${path.module}/../zip_code/layer.zip"
 }
 
 resource "aws_s3_object" "layer_zip" { #Upload the layer zip to the code_lambda_bucket.
   bucket = aws_s3_bucket.lambda_bucket.bucket
-  source = "${path.module}/../layer.zip" 
+  source = "${path.module}/../zip_code/layer.zip" 
   key    = "layer.zip"
 }
 

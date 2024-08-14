@@ -157,6 +157,13 @@ data "aws_iam_policy_document" "step_function_cw_document" {
   }
 } # Step func - Cloudwatch
 
+data "aws_iam_policy_document" "step_function_sns_document" {
+  statement {
+    actions   = ["SNS:Publish"]
+    resources = [aws_sns_topic.error.arn]
+  }
+} # Step func = Sns
+
 data "aws_iam_policy_document" "scheduler_document" {
   statement {
     actions = ["states:StartExecution"]
@@ -201,6 +208,11 @@ resource "aws_iam_policy" "step_cw_policy" {
   policy      = data.aws_iam_policy_document.step_function_cw_document.json
 } # Step Func - Policy
 
+resource "aws_iam_policy" "step_sns_policy" {
+  name_prefix = "step-func-sns-"
+  policy      = data.aws_iam_policy_document.step_function_sns_document.json
+} # Step Func - Policy
+
 resource "aws_iam_policy" "scheduler_policy" {
   name_prefix = "scheduler-policy-"
   policy      = data.aws_iam_policy_document.scheduler_document.json
@@ -241,6 +253,11 @@ resource "aws_iam_role_policy_attachment" "step_function_cw_policy_attachment" {
   role       = aws_iam_role.iam_for_sfn.name
   policy_arn = aws_iam_policy.step_cw_policy.arn
 } # Step Func - Attach
+
+resource "aws_iam_role_policy_attachment" "step_function_sns_policy_attachment" {
+  role       = aws_iam_role.iam_for_sfn.name
+  policy_arn = aws_iam_policy.step_sns_policy.arn
+}
 
 resource "aws_iam_role_policy_attachment" "scheduler_policy_attachment" {
   role       = aws_iam_role.iam_for_scheduler.name
