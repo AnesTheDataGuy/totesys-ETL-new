@@ -104,4 +104,4 @@
 #     return f"Successfully uploaded raw data to {raw_data_bucket}"
 
 def lambda_handler(event, context):
-    pass
+    return "passed"
