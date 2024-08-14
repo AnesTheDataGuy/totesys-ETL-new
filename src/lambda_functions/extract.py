@@ -39,4 +39,3 @@ def lambda_handler(event, context):
             host= HOST,
             port= PORT
         )
-        
