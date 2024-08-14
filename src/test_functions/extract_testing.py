@@ -68,7 +68,8 @@ def lambda_handler(event, context):
 
         for data_table in data_tables:
             query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{data_table}';"
-            column_names = conn.run(query)           
+            column_names = conn.run(query)
+            
             header = []
             for column in column_names:
                 header.append(column[0])
@@ -91,6 +92,13 @@ def lambda_handler(event, context):
             except ClientError as e:
                 logging.error(e)
                 return f"Failed to upload file"
+
+            with open(
+                f"{save_file_path_prefix}{data_table}.csv", "w", newline=""
+            ) as csvfile:
+                csvwriter = csv.writer(csvfile)
+                csvwriter.writerow(col_list)
+                csvwriter.writerows(data_rows)     
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
                      
