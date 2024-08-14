@@ -3,15 +3,15 @@ variable "lambda_bucket" {
   default = "totesys-lambda-"
 }
 
-variable "raw_data" {
-  type    = string
-  default = "totesys-raw-data-"
-}
+# # variable "raw_data" {
+# #   type    = string
+# #   default = "totesys-raw-data-"
+# # }
 
-variable "processed_data" {
-  type    = string
-  default = "totesys-processed-data-"
-}
+# # variable "processed_data" {
+# #   type    = string
+# #   default = "totesys-processed-data-"
+# }
 
 variable "athena_queries" {
   type    = string
