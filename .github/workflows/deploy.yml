@@ -46,7 +46,7 @@ jobs:
         with:
           python-version: '3.11.1'
       - name: run make
-        uses: make lambda_requirements
+        run: make lambda_requirements
       - name: Echo the repository content
         run: |
           echo "Listing all files in the repository:"
