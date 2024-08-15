@@ -1,14 +1,30 @@
-import pytest, boto3, os, shutil
+import pytest, boto3, os, shutil, json
 from moto import mock_aws
-from src.test_functions.extract_testing import lambda_handler
+from src.lambda_functions.extract import lambda_handler, get_secret
 from datetime import datetime as dt
+from dotenv import load_dotenv, find_dotenv
+
+env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
+load_dotenv(env_file)
+
+PG_USER = os.getenv("PG_USER")
+PG_PASSWORD = os.getenv("PG_PASSWORD")
+PG_DATABASE = os.getenv("PG_DATABASE")
+PG_HOST = os.getenv("PG_HOST")
+PG_PORT = os.getenv("PG_PORT")
 
 year = dt.now().year
 month = dt.now().month
 day = dt.now().day
 hour = dt.now().hour
+if len(str(hour)) == 1:
+    hour = "0"+str(hour)
 minute = dt.now().minute
+if len(str(minute)) == 1:
+    minute = "0"+str(minute)
 second = dt.now().second
+if len(str(second)) == 1:
+    second = "0"+str(second)
 
 table_data = [
     "payment_type.csv",
@@ -77,33 +93,59 @@ def s3_no_buckets(aws_credentials):
         s3_nobuckets = boto3.client("s3")
         yield s3_nobuckets
 
+@pytest.fixture(scope="function")
+def secretsmanager(aws_credentials):
+    with mock_aws():
+        database_dict = {"user": PG_USER, 
+            "password": PG_PASSWORD, 
+            "host": PG_HOST,
+            "database": PG_DATABASE, "port": PG_PORT}
+        secretsmanager = boto3.client("secretsmanager")
+        secretsmanager.create_secret(Name="totesys_database_credentials", 
+            SecretString=json.dumps(database_dict))
+        yield secretsmanager
+
+@pytest.fixture(scope="function")
+def secretsmanager_broken(aws_credentials):
+    with mock_aws():
+        database_dict = {"user": PG_USER, 
+            "password": PG_PASSWORD, 
+            "host": PG_HOST,
+            "database": 'steve', "port": PG_PORT}
+        secretsmanager = boto3.client("secretsmanager")
+        secretsmanager.create_secret(Name="totesys_database_credentials", 
+            SecretString=json.dumps(database_dict))
+        yield secretsmanager
 
 class DummyContext:  # Dummy context class used for testing
     pass
 
 
-@pytest.mark.skip()
+
 @pytest.mark.it("Returns appropriate message if raw data bucket is not found")
-def test_bucket_does_not_exist(s3_no_buckets):
+def test_bucket_does_not_exist(s3_no_buckets, secretsmanager):
     event = {}
     context = DummyContext()
     expected = "No raw data bucket found"
     assert lambda_handler(event, context) == expected
 
-
-@pytest.mark.skip()
 @pytest.mark.it("script succesfully connects to database")
-def test_succesfully_connects_to_database(s3):
+def test_succesfully_connects_to_database(s3, secretsmanager):
     event = {}
     context = DummyContext()
-    assert lambda_handler(event, context) != None
+    assert not isinstance(lambda_handler(event, context), Exception)
 
+@pytest.mark.it("returns exception when failing to connect to database due to wrong credentials")
+def test_fails_to_connect_to_database(s3, secretsmanager_broken):
+    event = {}
+    context = DummyContext()
+    with pytest.raises (Exception):
+        lambda_handler(event, context)
 
+# The test below checks files are written locally but we no longer care about it being written locally so it's skipped
 @pytest.mark.skip()
-@pytest.mark.it(
-    "script succesfully writes csv files containing database data to local folder"
-)
-def test_succesfully_save_datatables_to_csv(s3):
+@pytest.mark.it("script succesfully writes csv files containing database data to local folder")
+def test_succesfully_save_datatables_to_csv(s3, secretsmanager):
     saved_csv_path = data_dir
     expected_files = {
         "sales_order.csv": 0,
@@ -125,16 +167,14 @@ def test_succesfully_save_datatables_to_csv(s3):
     for file in expected_files:
         assert file in folder_content
 
-
-# @pytest.mark.skip()
 @pytest.mark.it("Successfully uploads files with correct time stamp key to s3 bucket")
-def test_uploads_csv_to_raw_data_bucket(s3):
+def test_uploads_csv_to_raw_data_bucket(s3, secretsmanager):
     saved_csv_path = check_file_dir
     event = {}
     context = DummyContext()
     res = lambda_handler(event, context)
     listing = s3.list_objects_v2(Bucket="totesys-raw-data-000000")
-    time_prefix = f"{year}/{month}/{day}/{hour}-{minute}-{second}/"
+    time_prefix = f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
     assert len(listing["Contents"]) == 11
     expected_files = {
         f"{time_prefix}sales_order.csv": 0,
@@ -151,10 +191,15 @@ def test_uploads_csv_to_raw_data_bucket(s3):
     }
     for i in range(len(listing)):
         assert f'{listing["Contents"][i]["Key"]}' in expected_files
-    assert res == f"Successfully uploaded raw data to totesys-raw-data-000000"
+    assert res == {"time_prefix": time_prefix}
 
     s3.download_file(
         "totesys-raw-data-000000",
         f"{time_prefix}payment.csv",
         f"{saved_csv_path}payment.csv",
     )
+
+@pytest.mark.it("get secret raises an error if secret_name is not in secretsmanager")
+def test_get_secret_failed(secretsmanager):
+    with pytest.raises (Exception):
+        get_secret('imposter_steve')

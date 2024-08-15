@@ -24,16 +24,21 @@ year = dt.now().year
 month = dt.now().month
 day = dt.now().day
 hour = dt.now().hour
+if len(str(hour)) == 1:
+    hour = "0"+str(hour)
 minute = dt.now().minute
+if len(str(minute)) == 1:
+    minute = "0"+str(minute)
 second = dt.now().second
+if len(str(second)) == 1:
+    second = "0"+str(second)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def get_secret():
+def get_secret(secret_name="totesys_database_credentials"):
 
-    secret_name = "totesys_database_credentials"
     region_name = "eu-west-2"
 
     # Create a Secrets Manager client
@@ -45,7 +50,8 @@ def get_secret():
     except ClientError as e:
         # For a list of exceptions thrown, see
         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
-        raise e
+        logging.error(e)
+        raise Exception(f"Can't retrieve secret due to {e}")
 
     secret = json.loads(get_secret_value_response["SecretString"])
     return secret
@@ -108,15 +114,16 @@ def lambda_handler(event, context):
 
             except ClientError as e:
                 logging.error(e)
-                return f"Failed to upload file"
+                raise Exception("Failed to upload file")
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
 
     except Error as e:
-        logging.error(e["M"])
-        return f"Connection to database failed: {e['M']}"
+        logging.error(e)
+        raise Exception(f"Connection to database failed: {e}")
 
     finally:
-        conn.close()
+        if 'conn' in locals():
+            conn.close()
 
     return {"time_prefix": time_prefix}
