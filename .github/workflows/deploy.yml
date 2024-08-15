@@ -9,9 +9,34 @@ jobs:
   run-tests:
     name: run-tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+          POSTGRES_DB: mydatabase
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until pg_isready -h localhost -p 5432; do
+            sleep 1
+          done
+      - name: Connect to database and seed test database
+        run: |
+        PGPASSWORD=mypassword psql -h localhost -U myuser -f database/test_db.sql
       - name: Python Init
         uses: actions/setup-python@v5
         with:
@@ -32,7 +57,7 @@ jobs:
         run: |
           echo "Listing all files in the repository:"
           ls 
-
+  
   deploy-infrastructure:
     name: deploy-infrastructure
     runs-on: ubuntu-latest
