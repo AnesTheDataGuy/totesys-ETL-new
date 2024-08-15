@@ -10,20 +10,28 @@ hour = dt.now().hour
 minute = dt.now().minute
 second = dt.now().second
 
-table_data = ['payment_type.csv','transaction.csv', 'currency.csv',
-'payment.csv', 'sales_order.csv', 'design.csv', 'address.csv',
-'counterparty.csv', 'staff.csv', 'department.csv', 'purchase_order.csv']
-data_dir = './data/table_data/'
-check_file_dir =data_dir+'check_s3_file/'
-
-#for table in table_data:
+table_data = [
+    "payment_type.csv",
+    "transaction.csv",
+    "currency.csv",
+    "payment.csv",
+    "sales_order.csv",
+    "design.csv",
+    "address.csv",
+    "counterparty.csv",
+    "staff.csv",
+    "department.csv",
+    "purchase_order.csv",
+]
+data_dir = "./data/table_data/"
+check_file_dir = data_dir + "check_s3_file/"
 #    if os.path.isfile(f'{data_dir}{table}'):
 #        os.remove(f'{data_dir}{table}')
 
 if os.path.isdir(data_dir):
     shutil.rmtree(data_dir)
 
-os.mkdir(data_dir)
+os.makedirs(data_dir)
 os.mkdir(check_file_dir)
 
 """
@@ -36,6 +44,7 @@ BEFORE RUNNING THE TESTS, PLEASE MAKE SURE TO:
 
 Switch back to .env.development to use the online database.
 """
+
 
 @pytest.fixture(scope="function")
 def aws_credentials():
@@ -67,7 +76,7 @@ def s3_no_buckets(aws_credentials):
         yield s3_nobuckets
 
 
-class DummyContext: # Dummy context class used for testing
+class DummyContext:  # Dummy context class used for testing
     pass
 
 
@@ -79,6 +88,7 @@ def test_bucket_does_not_exist(s3_no_buckets):
     expected = "No raw data bucket found"
     assert lambda_handler(event, context) == expected
 
+
 @pytest.mark.skip()
 @pytest.mark.it("script succesfully connects to database")
 def test_succesfully_connects_to_database(s3):
@@ -86,8 +96,11 @@ def test_succesfully_connects_to_database(s3):
     context = DummyContext()
     assert lambda_handler(event, context) != None
 
+
 @pytest.mark.skip()
-@pytest.mark.it("script succesfully writes csv files containing database data to local folder")
+@pytest.mark.it(
+    "script succesfully writes csv files containing database data to local folder"
+)
 def test_succesfully_save_datatables_to_csv(s3):
     saved_csv_path = data_dir
     expected_files = {
@@ -110,7 +123,8 @@ def test_succesfully_save_datatables_to_csv(s3):
     for file in expected_files:
         assert file in folder_content
 
-#@pytest.mark.skip()
+
+# @pytest.mark.skip()
 @pytest.mark.it("Successfully uploads files with correct time stamp key to s3 bucket")
 def test_uploads_csv_to_raw_data_bucket(s3):
     saved_csv_path = check_file_dir
@@ -137,4 +151,8 @@ def test_uploads_csv_to_raw_data_bucket(s3):
         assert f'{listing["Contents"][i]["Key"]}' in expected_files
     assert res == f"Successfully uploaded raw data to totesys-raw-data-000000"
 
-    s3.download_file("totesys-raw-data-000000", f"{time_prefix}payment.csv", f"{saved_csv_path}payment.csv")
+    s3.download_file(
+        "totesys-raw-data-000000",
+        f"{time_prefix}payment.csv",
+        f"{saved_csv_path}payment.csv",
+    )
