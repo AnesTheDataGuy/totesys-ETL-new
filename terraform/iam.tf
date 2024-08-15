@@ -92,6 +92,13 @@ data "aws_iam_policy_document" "s3_read_write_object" {
   }
 } # Lambda - s3 objects
 
+data "aws_iam_policy_document" "access_to_secret" {
+  statement {
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = ["*"]
+  }
+} # Lambda -secrets manager
+
 data "aws_iam_policy_document" "cw_document" {
   statement {
 
@@ -188,6 +195,11 @@ resource "aws_iam_policy" "s3_list_all_buckets_policy" {
   policy      = data.aws_iam_policy_document.s3_list_all_buckets.json
 } # Lambda - Policy
 
+resource "aws_iam_policy" "secrets_manager_get_secret_value_policy" {
+  name_prefix =  "secrets-manager-get-secret-policy-lambdas-"
+  policy      = data.aws_iam_policy_document.access_to_secret.json
+} # Lambda - Policy
+
 resource "aws_iam_policy" "cw_policy" {
   name_prefix = "cloudwatch-policy-etl-lambdas-"
   policy      = data.aws_iam_policy_document.cw_document.json
@@ -232,6 +244,11 @@ resource "aws_iam_role_policy_attachment" "s3_list_bucket_policy_attachment" {
 resource "aws_iam_role_policy_attachment" "s3_list_all_buckets_policy_attachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.s3_list_all_buckets_policy.arn
+} # Lambda - Attach
+
+resource "aws_iam_role_policy_attachment" "secrets_manager_get_secret_value_policy_attachment" {
+  role = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.secrets_manager_get_secret_value_policy.arn 
 } # Lambda - Attach
 
 resource "aws_iam_role_policy_attachment" "cw_policy_attachment" {
