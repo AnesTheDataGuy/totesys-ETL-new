@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket = "testing-backend-bucket-nc"
+    bucket = "testing-backend-bucket-nc-arin"
     key    = "de-s3-file-reader/terraform.tfstate"
     region = "eu-west-2"
   }
