@@ -36,7 +36,7 @@ jobs:
           done
       - name: Connect to database and seed test database
         run: |
-        PGPASSWORD=mypassword psql -h localhost -U myuser -f database/test_db.sql
+          PGPASSWORD=mypassword psql -h localhost -U myuser -f database/test_db.sql
       - name: Python Init
         uses: actions/setup-python@v5
         with:
