@@ -25,8 +25,6 @@ table_data = [
 ]
 data_dir = "./data/table_data/"
 check_file_dir = data_dir + "check_s3_file/"
-
-# for table in table_data:
 #    if os.path.isfile(f'{data_dir}{table}'):
 #        os.remove(f'{data_dir}{table}')
 

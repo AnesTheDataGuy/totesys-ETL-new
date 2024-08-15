@@ -1,2 +1,2 @@
 def lambda_handler(event, context):
-    pass
+    return {"status": "passed"}
