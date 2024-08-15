@@ -70,6 +70,7 @@ def s3_no_buckets(aws_credentials):
 class DummyContext: # Dummy context class used for testing
     pass
 
+
 @pytest.mark.skip()
 @pytest.mark.it("Returns appropriate message if raw data bucket is not found")
 def test_bucket_does_not_exist(s3_no_buckets):
