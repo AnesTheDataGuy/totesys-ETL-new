@@ -29,27 +29,45 @@ data "archive_file" "transform_lambda" {
 resource "aws_s3_object" "test_lambda_zip" { #Upload the lambda zip to lambda_bucket.
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/test_lambda.zip"
-  key    = "test_lambda${data.archive_file.test_lambda.output_base64sha256}.zip"
+  key    = "test_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.test_lambda.output_path)
+  metadata = {
+    last_updated = timestamp()
+  }
   
 }
 
 resource "aws_s3_object" "extract_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/extract.zip"
-  key    = "extract_lambda${data.archive_file.extract_lambda.output_base64sha256}.zip"
+  key    = "extract_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.extract_lambda.output_path)
+  metadata = {
+    last_updated = timestamp()
+  }
 }
 
 resource "aws_s3_object" "load_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/load.zip"
-  key    = "load_lambda${data.archive_file.load_lambda.output_base64sha256}.zip"
+  key    = "load_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.load_lambda.output_path)
+  metadata = {
+    last_updated = timestamp()
+  }
+
 
 }
 
 resource "aws_s3_object" "transform_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/transform.zip"
-  key    = "transform_lambda${data.archive_file.transform_lambda.output_base64sha256}.zip"
+  key    = "transform_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.transform_lambda.output_path)
+
+  metadata = {
+    last_updated = timestamp()
+  }
 }
 
 resource "aws_lambda_function" "test_lambda" { #Provision the lambda
@@ -62,7 +80,6 @@ resource "aws_lambda_function" "test_lambda" { #Provision the lambda
   runtime          = var.python_runtime
   handler          = "test_lambda.lambda_handler"
   timeout          = 120
-  skip_destroy     = true
 }
 
 resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
@@ -75,7 +92,6 @@ resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
   runtime          = var.python_runtime
   handler          = "extract.lambda_handler"
   timeout          = 120
-  skip_destroy     = true
 }
 
 resource "aws_lambda_function" "load_lambda" { #Provision the lambda
@@ -88,7 +104,6 @@ resource "aws_lambda_function" "load_lambda" { #Provision the lambda
   runtime          = var.python_runtime
   handler          = "load.lambda_handler"
   timeout          = 120
-  skip_destroy     = true
 }
 
 resource "aws_lambda_function" "transform_lambda" { #Provision the lambda
@@ -101,5 +116,4 @@ resource "aws_lambda_function" "transform_lambda" { #Provision the lambda
   runtime          = var.python_runtime
   handler          = "transform.lambda_handler"
   timeout          = 120
-  skip_destroy     = true
 }
