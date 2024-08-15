@@ -1,3 +1,4 @@
+
 variable "lambda_bucket" {
   type    = string
   default = "totesys-lambda-"

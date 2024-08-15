@@ -2,6 +2,27 @@ import pytest, boto3, os, shutil
 from moto import mock_aws
 from src.test_functions.extract_testing import lambda_handler
 from datetime import datetime as dt
+from dotenv import load_dotenv, find_dotenv
+
+"""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+BEFORE RUNNING THE TESTS, PLEASE MAKE SURE TO:
+1. Run  database/test_db.sql: psql -f database/test_db.sql
+2. Make sure that you have testing and development environment configured
+    (.env.testing and .env.development)
+3. Switch to testing env (export ENV=testing in the CLI)
+
+Switch back to .env.development to use the online database.
+"""
+
+env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
+load_dotenv(env_file)
+
+PG_USER = os.getenv("PG_USER")
+PG_PASSWORD = os.getenv("PG_PASSWORD")
+DATABASE = os.getenv("PG_DATABASE")
+HOST = os.getenv("PG_HOST")
+PORT = os.getenv("PG_PORT")
 
 year = dt.now().year
 month = dt.now().month
@@ -36,16 +57,7 @@ if os.path.isdir(data_dir):
 os.mkdir(data_dir)
 os.mkdir(check_file_dir)
 
-"""
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-BEFORE RUNNING THE TESTS, PLEASE MAKE SURE TO:
-1. Run  database/test_db.sql: psql -f database/test_db.sql
-2. Make sure that you have testing and development environment configured
-    (.env.testing and .env.development)
-3. Switch to testing env (export ENV=testing in the CLI)
 
-Switch back to .env.development to use the online database.
-"""
 
 
 @pytest.fixture(scope="function")
@@ -67,8 +79,17 @@ def s3(aws_credentials):
             Bucket="totesys-raw-data-000000",
             CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
         )
+        
         yield s3
 
+@pytest.fixture(scope="function")
+def secrets_manager(aws_credentials):
+    with mock_aws():
+        secrets_manager = boto3.client("secretsmanager")
+        secrets_manager.create_secret(
+            Name="totesys-credentials",
+            SecretString='{"username": , "password": , "dbname": , "port": ,}',
+        )
 
 @pytest.fixture(scope="function")
 def s3_no_buckets(aws_credentials):

@@ -1,4 +1,4 @@
-import boto3, logging, os, csv, json
+import boto3, logging, os, csv, json, socket
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
@@ -23,8 +23,14 @@ year = dt.now().year
 month = dt.now().month
 day = dt.now().day
 hour = dt.now().hour
+if len(str(hour)) == 1:
+    hour = "0"+str(hour)
 minute = dt.now().minute
+if len(str(minute)) == 1:
+    minute = "0"+str(minute)
 second = dt.now().second
+if len(str(second)) == 1:
+    second = "0"+str(second)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -37,10 +43,9 @@ def get_secret():
     # Create a Secrets Manager client
     session = boto3.session.Session()
     client = session.client(
-        service_name='secretsmanager',
+        service_name='secretsmanager', 
         region_name=region_name
     )
-
     try:
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
@@ -60,6 +65,7 @@ def lambda_handler(event, context):
     db_database = db_credentials['dbname']
     db_host = db_credentials['host']
     db_port = db_credentials['port']
+    print(f"\n HOST: {db_host}")
     save_file_path_prefix = "./data/table_data/"
     s3_client = boto3.client("s3")
     buckets = s3_client.list_buckets()
@@ -75,7 +81,7 @@ def lambda_handler(event, context):
         logging.error("No raw data bucket found")
         return "No raw data bucket found"
 
-    time_prefix = f"{year}/{month}/{day}/{hour}-{minute}-{second}/"
+    time_prefix = f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
     try:
         conn = Connection(
@@ -112,7 +118,7 @@ def lambda_handler(event, context):
                 logging.error(e)
                 return f"Failed to upload file"
 
-        logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
+        logging.info(f"Successfully uploaded raw data to {raw_data_bucket}/{time_prefix}")
 
     except Error as e:
         logging.error(e["M"])
@@ -121,6 +127,6 @@ def lambda_handler(event, context):
     finally:
         conn.close()
 
-    return f"Successfully uploaded raw data to {raw_data_bucket}"
+    return {'time_prefix': time_prefix}
 
-print(f"\n >>> {get_secret()}")
+print(lambda_handler(0,0))
