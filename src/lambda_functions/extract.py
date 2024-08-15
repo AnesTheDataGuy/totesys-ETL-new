@@ -1,10 +1,9 @@
-import boto3
-import logging
-import csv
+import boto3, logging, os, csv
 import json
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
+from dotenv import load_dotenv, find_dotenv
 from io import StringIO
 
 data_tables = [
@@ -105,6 +104,7 @@ def lambda_handler(event, context):
             file_data = [header] + data_rows
             csv.writer(file_to_save).writerows(file_data)
             file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
+
 
             try:
                 response = s3_client.put_object(
