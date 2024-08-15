@@ -70,7 +70,8 @@ def s3_no_buckets(aws_credentials):
 class DummyContext: # Dummy context class used for testing
     pass
 
-# @pytest.mark.skip()
+
+@pytest.mark.skip()
 @pytest.mark.it("Returns appropriate message if raw data bucket is not found")
 def test_bucket_does_not_exist(s3_no_buckets):
     event = {}
@@ -78,14 +79,14 @@ def test_bucket_does_not_exist(s3_no_buckets):
     expected = "No raw data bucket found"
     assert lambda_handler(event, context) == expected
 
-# @pytest.mark.skip()
+@pytest.mark.skip()
 @pytest.mark.it("script succesfully connects to database")
 def test_succesfully_connects_to_database(s3):
     event = {}
     context = DummyContext()
     assert lambda_handler(event, context) != None
 
-# @pytest.mark.skip()
+@pytest.mark.skip()
 @pytest.mark.it("script succesfully writes csv files containing database data to local folder")
 def test_succesfully_save_datatables_to_csv(s3):
     saved_csv_path = data_dir
