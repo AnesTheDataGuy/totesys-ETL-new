@@ -33,7 +33,7 @@ logger.setLevel(logging.INFO)
 
 def get_secret():
 
-    secret_name = "totesys_credentials"
+    secret_name = "totesys_database_credentials"
     region_name = "eu-west-2"
 
     # Create a Secrets Manager client
@@ -53,10 +53,10 @@ def get_secret():
 
 def lambda_handler(event, context):
     db_credentials = get_secret()
-    db_user = db_credentials["username"]
+    db_user = db_credentials["user"]
     db_password = db_credentials["password"]
-    db_database = db_credentials["dbname"]
-    db_host = "nc-data-eng-totesys-production.chpsczt8h1nu.eu-west-2.rds.amazonaws.com"
+    db_database = db_credentials["database"]
+    db_host = db_credentials["host"]
     db_port = db_credentials["port"]
     save_file_path_prefix = "./data/table_data/"
     s3_client = boto3.client("s3")
@@ -73,7 +73,7 @@ def lambda_handler(event, context):
         logging.error("No raw data bucket found")
         return "No raw data bucket found"
 
-    time_prefix = f"{year}/{month}/{day}/{hour}-{minute}-{second}/"
+    time_prefix = f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
     try:
         conn = Connection(
@@ -119,4 +119,4 @@ def lambda_handler(event, context):
     finally:
         conn.close()
 
-    return f"Successfully uploaded raw data to {raw_data_bucket}"
+    return {"time_prefix": time_prefix}

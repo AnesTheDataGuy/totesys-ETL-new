@@ -97,7 +97,7 @@ def lambda_handler(event, context):
                 f"{save_file_path_prefix}{data_table}.csv", "w", newline=""
             ) as csvfile:
                 csvwriter = csv.writer(csvfile)
-                csvwriter.writerow(col_list)
+                csvwriter.writerow(header)
                 csvwriter.writerows(data_rows)
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
