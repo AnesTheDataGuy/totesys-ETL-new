@@ -30,24 +30,44 @@ resource "aws_s3_object" "test_lambda_zip" { #Upload the lambda zip to lambda_bu
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/test_lambda.zip"
   key    = "test_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.test_lambda.output_path)
+  metadata = {
+    last_updated = timestamp()
+  }
+  
 }
 
 resource "aws_s3_object" "extract_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/extract.zip"
-  key    = "extract.zip"
+  key    = "extract_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.extract_lambda.output_path)
+  metadata = {
+    last_updated = timestamp()
+  }
 }
 
 resource "aws_s3_object" "load_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/load.zip"
-  key    = "load.zip"
+  key    = "load_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.load_lambda.output_path)
+  metadata = {
+    last_updated = timestamp()
+  }
+
+
 }
 
 resource "aws_s3_object" "transform_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/transform.zip"
-  key    = "transform.zip"
+  key    = "transform_lambda.zip"
+  etag   = filebase64sha256(data.archive_file.transform_lambda.output_path)
+
+  metadata = {
+    last_updated = timestamp()
+  }
 }
 
 resource "aws_lambda_function" "test_lambda" { #Provision the lambda

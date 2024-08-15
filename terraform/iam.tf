@@ -65,8 +65,8 @@ data "aws_iam_policy_document" "s3_list_bucket" {
     actions = ["s3:ListBucket"]
 
     resources = [
-      "totesys-processed-data",
-      "totesys-raw-data",
+      "arn:aws:s3:::${var.processed_data}/*",
+      "arn:aws:s3:::${var.raw_data}/*"
     ]
   }
 } # Lambda - s3 buckets
@@ -94,8 +94,8 @@ data "aws_iam_policy_document" "s3_read_write_object" {
     actions = ["s3:PutObject", "s3:GetObject"]
 
     resources = [
-      "totesys-processed-data/*",
-      "totesys-raw-data/*",
+      "arn:aws:s3:::${var.processed_data}/*",
+      "arn:aws:s3:::${var.raw_data}/*"
     ]
   }
 } # Lambda - s3 objects
