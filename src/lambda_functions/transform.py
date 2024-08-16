@@ -29,10 +29,10 @@ def lambda_handler(event, context):
     Returns:
         dict: dictionary with time prefix to be used in the load function
     """
-    s3_client = boto3.client("s3")    
+    s3_client = boto3.client("s3")
 
     prefix = event["time_prefix"]
-    
+
     _, processed_data_bucket = finds_data_buckets()
 
     for file in csvs:
@@ -40,13 +40,13 @@ def lambda_handler(event, context):
 
         try:
             s3_client.put_object(
-                    Body=parquet,
-                    Bucket=processed_data_bucket,
-                    Key=f"{prefix}{file}.parquet",
-                )
+                Body=parquet,
+                Bucket=processed_data_bucket,
+                Key=f"{prefix}{file}.parquet",
+            )
 
         except ClientError as e:
-                logging.error(e)
-                return f"Failed to upload file"
-    
+            logging.error(e)
+            return f"Failed to upload file"
+
     return {"time_prefix": prefix}

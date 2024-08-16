@@ -2,7 +2,7 @@ import boto3
 import logging
 from io import StringIO, BytesIO
 import pandas as pd
-
+from botocore.exceptions import ClientError
 
 def finds_data_buckets():
     """
@@ -42,7 +42,6 @@ def finds_data_buckets():
     return raw_data_bucket, processed_data_bucket
 
 
-
 def convert_csv_to_parquet(csv):
     """
     This takes in a csv file name, finds this file within the raw data bucket then
@@ -57,17 +56,21 @@ def convert_csv_to_parquet(csv):
     s3_client = boto3.client("s3")
 
     raw_data_bucket, _ = finds_data_buckets()
+    try:
+        res = s3_client.get_object(
+            Bucket=raw_data_bucket, Key=f"{csv}"
+        )  # change f string for when we finalise extract structure
+        csv_data = res["Body"].read().decode("utf-8")
+    except ClientError as e:
+        return "csv file not found"
 
-    res = s3_client.get_object(Bucket=raw_data_bucket, Key=f'{csv}.csv') #change f string for when we finalise extract structure
-    csv_data = res["Body"].read().decode("utf-8")
-    
     data_buffer_csv = StringIO(csv_data)
     df = pd.read_csv(data_buffer_csv)
-    
+
     data_buffer_parquet = BytesIO()
-    parquet = df.to_parquet(data_buffer_parquet, engine='pyarrow')
+    parquet = df.to_parquet(data_buffer_parquet, engine="pyarrow")
     data_buffer_parquet.seek(0)
-    
+
     parquet = data_buffer_parquet.read()
 
     return parquet

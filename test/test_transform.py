@@ -80,4 +80,3 @@ def test_s3_finds_raw_bucket_only(s3_raw_only):
 
 def test_s3_finds_processed_bucket_only(s3_proc_only):
     assert transform(event, context) == "No raw data bucket found"
-
