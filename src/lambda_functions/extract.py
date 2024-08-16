@@ -1,6 +1,5 @@
 import boto3
 import logging
-import os
 import csv
 import json
 from datetime import datetime as dt
