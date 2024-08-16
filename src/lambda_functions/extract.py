@@ -25,7 +25,44 @@ data_tables = [
     "transaction",
 ]
 
-all_data_file_path = "/original/"
+"""
+
+history/year/month/day/hh:mm:s/files with no prefix
+
+first time ->
+    write source csv
+
+then ->
+    compare db query to source csv.
+    write history csv
+    overwrite (refresh) source csv
+
+
+bucket:
+    /source/
+            sales_order_source.csv
+            design_source.csv
+            ...
+    /history/
+            2024/08/16/hh_mm_ss
+    OR
+
+    /history/
+            sales_order/
+            desing_source
+
+    OR
+    sales_order/
+            source/
+                    sales_order/
+                    design_source/
+                    ...
+            history/
+                    sales_order/
+                    design_source/
+"""
+
+all_data_file_path = "/source/"
 
 def create_time_prefix_for_file():
     current_time = dt.now()
