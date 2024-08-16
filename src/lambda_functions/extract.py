@@ -1,9 +1,11 @@
-import boto3, logging, os, csv
+import boto3
+import logging
+import os
+import csv
 import json
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv, find_dotenv
 from io import StringIO
 
 data_tables = [
