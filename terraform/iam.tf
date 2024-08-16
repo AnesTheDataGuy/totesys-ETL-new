@@ -65,8 +65,8 @@ data "aws_iam_policy_document" "s3_list_bucket" {
     actions = ["s3:ListBucket"]
 
     resources = [
-      "arn:aws:s3:::${var.processed_data}",
-      "arn:aws:s3:::${var.raw_data}"
+      "${aws_s3_bucket.processed_data_bucket.arn}",
+      "${aws_s3_bucket.raw_data_bucket.arn}"
     ]
   }
 } # Lambda - s3 buckets
