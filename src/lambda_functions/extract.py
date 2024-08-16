@@ -106,7 +106,6 @@ def lambda_handler(event, context):
             csv.writer(file_to_save).writerows(file_data)
             file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
-
             try:
                 response = s3_client.put_object(
                     Body=file_to_save,
