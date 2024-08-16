@@ -147,14 +147,15 @@ class TestGetSecret:
 
 
 class TestLambdaHandler:
-
-    @pytest.mark.it("Returns appropriate message if raw data bucket is not found")
+    #@pytest.mark.skip()
+    @pytest.mark.it("Raise exception if raw data bucket is not found")
     def test_bucket_does_not_exist(self, s3_no_buckets, secretsmanager):
         event = {}
         context = DummyContext()
-        expected = "No raw data bucket found"
-        assert lambda_handler(event, context) == expected
+        with pytest.raises(Exception):
+            lambda_handler(event, context)
 
+    #@pytest.mark.skip()
     @pytest.mark.it("script succesfully connects to database")
     def test_succesfully_connects_to_database(self, s3, secretsmanager):
         event = {}
@@ -193,34 +194,34 @@ class TestLambdaHandler:
         for file in expected_files:
             assert file in folder_content
 
-    @pytest.mark.it("Successfully uploads files with correct time stamp key to s3 bucket")
+    @pytest.mark.it("Successfully uploads original files to s3 bucket when bucket is empty")
     def test_uploads_csv_to_raw_data_bucket(self, s3, secretsmanager):
-        saved_csv_path = check_file_dir
+        file_path = "/original/"
         event = {}
         context = DummyContext()
-        res = lambda_handler(event, context)
+        lambda_handler(event, context)
         listing = s3.list_objects_v2(Bucket="totesys-raw-data-000000")
-        time_prefix = f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
         assert len(listing["Contents"]) == 11
         expected_files = {
-            f"{time_prefix}sales_order.csv": 0,
-            f"{time_prefix}design.csv": 0,
-            f"{time_prefix}currency.csv": 0,
-            f"{time_prefix}staff.csv": 0,
-            f"{time_prefix}counterparty.csv": 0,
-            f"{time_prefix}address.csv": 0,
-            f"{time_prefix}department.csv": 0,
-            f"{time_prefix}purchase_order.csv": 0,
-            f"{time_prefix}payment_type.csv": 0,
-            f"{time_prefix}payment.csv": 0,
-            f"{time_prefix}transaction.csv": 0,
+            f"{file_path}sales_order_original.csv": 0,
+            f"{file_path}design_original.csv": 0,
+            f"{file_path}currency_original.csv": 0,
+            f"{file_path}staff_original.csv": 0,
+            f"{file_path}counterparty_original.csv": 0,
+            f"{file_path}address_original.csv": 0,
+            f"{file_path}department_original.csv": 0,
+            f"{file_path}purchase_order_original.csv": 0,
+            f"{file_path}payment_type_original.csv": 0,
+            f"{file_path}payment_original.csv": 0,
+            f"{file_path}transaction_original.csv": 0,
         }
         for i in range(len(listing)):
             assert f'{listing["Contents"][i]["Key"]}' in expected_files
-        assert res == {"time_prefix": time_prefix}
+        lambda_handler(event, context)
+        
+    @pytest.mark.it("Successfully compares new db queries with _original.csv")
+    def test_uploads_csv_to_raw_data_bucket(self, s3, secretsmanager):
+        event = {}
+        context = DummyContext()
+        assert not lambda_handler(event, context)
 
-        s3.download_file(
-            "totesys-raw-data-000000",
-            f"{time_prefix}payment.csv",
-            f"{saved_csv_path}payment.csv",
-        )
