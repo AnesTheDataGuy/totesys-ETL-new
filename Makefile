@@ -40,7 +40,9 @@ requirements: create-environment
 
 # Populates Layer folder with packages required for Lambda functions to run
 lambda_requirements: create-environment
-	$(call execute_in_env, $(PIP) install -r ./lambda_requirements.txt --target layer/python)
+	$(call execute_in_env, $(PIP) install -r lambda_reqs/extract_requirements.txt --target layer/extract_layer/python)
+	$(call execute_in_env, $(PIP) install -r lambda_reqs/transform_requirements.txt --target layer/transform_layer/python)
+	$(call execute_in_env, $(PIP) install -r lambda_reqs/load_requirements.txt --target layer/load_layer/python)
 
 ################################################################################################################
 # Set Up
@@ -72,7 +74,7 @@ run-black:
 
 ## Run the unit tests
 unit-test:
-	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} pytest -v)
+	$(call execute_in_env, PYTHONPATH=${PYTHONPATH} pytest -v ./test/*.py)
 
 ## Run all checks
 run-checks: security-test run-black unit-test

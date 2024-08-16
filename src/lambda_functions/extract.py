@@ -2,11 +2,7 @@ import boto3, logging, os, csv
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv, find_dotenv
 from io import StringIO
-
-env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
-load_dotenv(env_file)
 
 PG_USER = os.getenv("PG_USER")
 PG_PASSWORD = os.getenv("PG_PASSWORD")
@@ -40,7 +36,6 @@ logger.setLevel(logging.INFO)
 
 
 def lambda_handler(event, context):
-    save_file_path_prefix = "./data/table_data/"
     s3_client = boto3.client("s3")
     buckets = s3_client.list_buckets()
     found = False
@@ -68,37 +63,36 @@ def lambda_handler(event, context):
 
         for data_table in data_tables:
             query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{data_table}';"
-            column_names = conn.run(query)           
-            header = []
-            for column in column_names:
-                header.append(column[0])
+            column_names = conn.run(query)
+            header = [column[0] for column in column_names]
 
             query = f"SELECT * FROM {data_table};"
             data_rows = conn.run(query)
 
             file_to_save = StringIO()
+
             file_data = [header] + data_rows
             csv.writer(file_to_save).writerows(file_data)
-            file_to_save = bytes(file_to_save.getvalue(), encoding='utf-8')
-            
+            file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
+
             try:
-                response = s3_client.put_object(
-                        Body=file_to_save,
-                        Bucket=raw_data_bucket,
-                        Key=f"{time_prefix}{data_table}.csv"
+                s3_client.put_object(
+                    Body=file_to_save,
+                    Bucket=raw_data_bucket,
+                    Key=f"{time_prefix}{data_table}.csv",
                 )
-                
+
             except ClientError as e:
                 logging.error(e)
                 return f"Failed to upload file"
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
-                     
+
     except Error as e:
-        logging.error(e['M'])
+        logging.error(e["M"])
         return f"Connection to database failed: {e['M']}"
 
     finally:
         conn.close()
 
-    return f"Successfully uploaded raw data to {raw_data_bucket}"
+    return {"time_prefix": time_prefix}
