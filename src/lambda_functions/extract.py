@@ -35,7 +35,7 @@ first time ->
 then ->
     compare db query to source csv.
     write history csv
-    overwrite (refresh) source csv
+    We dont want to overwrite the old csv >>>>>>>>>>>>>>>>>>>>> overwrite (refresh) source csv
 
 
 bucket:
@@ -65,6 +65,11 @@ bucket:
 all_data_file_path = "/source/"
 
 def create_time_prefix_for_file():
+
+    """
+    Retrieves the current time at which the lambda function is invoked for use in
+    naming files and in passing a value for the transform function
+    """
     current_time = dt.now()
     year = current_time.year
     month = current_time.month
@@ -82,7 +87,17 @@ def create_time_prefix_for_file():
 
 
 def get_secret(secret_name="totesys_database_credentials"):
-    # Create a Secrets Manager client
+    
+    """
+    Initialises a boto3 secrets manager client and retrieves secret from secret manager 
+    based on argument given, with the default argument set to the database credentials.
+    The secret returned should be a dictionary with 5 keys:
+    user - the username for the database
+    password - the password for the user
+    host - the url of the server hosting the database
+    port - which port we are using to connect with the database
+    database - the name of the database that we want to connect to
+    """
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager", region_name="eu-west-2")
 
@@ -98,6 +113,11 @@ def get_secret(secret_name="totesys_database_credentials"):
 
 
 def connect_to_bucket(client):
+
+    """
+    Searches for a raw data bucket within an AWS account and returns bucket name if
+    bucket is found or raises exception if bucket is not found.
+    """
     buckets = client.list_buckets()
     for bucket in buckets["Buckets"]:
         if bucket["Name"].startswith("totesys-raw-data-"):
@@ -106,6 +126,10 @@ def connect_to_bucket(client):
     raise Exception("No raw data bucket found")          
 
 def connect_to_db(credentials):
+    
+    """
+    Uses the secret obtained in the get_secret method to establish a connection to the database
+    """
     return Connection(
             user=credentials["user"],
             password=credentials["password"],
@@ -115,6 +139,11 @@ def connect_to_db(credentials):
         )
 
 def create_and_upload_to_bucket(data,client,bucket,filename):
+
+    """
+    Converts a table from a database into a CSV file and uploads that CSV file to a specified bucket,
+    raising an exception if there's an error in uploading the file.
+    """
     file_to_save = StringIO()            
     csv.writer(file_to_save).writerows(data)
     file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
@@ -131,6 +160,11 @@ def create_and_upload_to_bucket(data,client,bucket,filename):
         raise Exception("Failed to upload file")
 
 def lambda_handler(event, context):
+
+    """
+    Wrapper function that allows us to run our utils functions together, and allows us to 
+    invoke this function in AWS
+    """
     db_credentials = get_secret()
     s3_client = boto3.client("s3")
     raw_data_bucket = connect_to_bucket(s3_client)
@@ -143,6 +177,10 @@ def lambda_handler(event, context):
     else:
         bucket_files = []
     print(f"\n <<<bucket_files: ")
+
+    """
+    TODO: Below can all be one util function
+    """
     try:
         conn = connect_to_db(db_credentials)
         for data_table_name in data_tables:
