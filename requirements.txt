@@ -6,3 +6,5 @@ pg8000==1.31.2
 python-dotenv==1.0.1
 pandas==2.2.2
 pyarrow==17.0.0
+pytest-cov==5.0.0
+

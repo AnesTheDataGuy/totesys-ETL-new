@@ -110,3 +110,4 @@ def lambda_handler(event, context):
         conn.close()
 
     return f"Successfully uploaded raw data to {raw_data_bucket}"
+

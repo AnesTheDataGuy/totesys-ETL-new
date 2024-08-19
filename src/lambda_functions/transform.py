@@ -1,7 +1,7 @@
 import boto3
 import logging
 from botocore.exceptions import ClientError
-from src.utils.transform_utils import finds_data_buckets
+from src.utils.transform_utils import finds_data_buckets, convert_csv_to_parquet
 
 csvs = [
     "sales_order",

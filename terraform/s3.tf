@@ -1,6 +1,5 @@
 resource "aws_s3_bucket" "lambda_bucket" {
   bucket_prefix = var.lambda_bucket
-
   tags = {
     Name        = "Code bucket"
     Environment = "Dev"

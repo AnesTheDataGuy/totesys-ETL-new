@@ -9,15 +9,46 @@ jobs:
   run-tests:
     name: run-tests
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: myuser
+          POSTGRES_PASSWORD: mypassword
+          POSTGRES_DB: mydatabase
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until pg_isready -h localhost -p 5432; do
+            sleep 1
+          done
+      - name: Connect to database and seed test database
+        run: |
+          PGPASSWORD=mypassword psql -h localhost -U myuser -d mydatabase -f database/test_db.sql
       - name: Python Init
         uses: actions/setup-python@v5
         with:
           python-version: '3.11.1'
       - name: Run Tests
         run: make all
+        env:
+          PG_USER: myuser
+          PG_PASSWORD: mypassword
+          PG_HOST: localhost
+          PG_DATABASE: test_totesys
+          PG_PORT: 5432
       - name: Install flake8
         run: pip install flake8
       - name: Run flake8
@@ -32,7 +63,7 @@ jobs:
         run: |
           echo "Listing all files in the repository:"
           ls 
-
+  
   deploy-infrastructure:
     name: deploy-infrastructure
     runs-on: ubuntu-latest
@@ -62,8 +93,6 @@ jobs:
       - name: Terraform Init
         working-directory: terraform
         run: terraform init
-      - name: Terraform Destroy
-        run: terraform destroy --auto-approve
       - name: Terraform plan
         working-directory: terraform
         run: terraform plan

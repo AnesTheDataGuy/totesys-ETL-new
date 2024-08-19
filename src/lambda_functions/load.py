@@ -2,4 +2,4 @@ import boto3
 
 
 def lambda_handler(event, context):
-    pass
+    return "hello"

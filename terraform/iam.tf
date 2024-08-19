@@ -66,7 +66,7 @@ data "aws_iam_policy_document" "s3_list_bucket" {
 
     resources = [
       "${aws_s3_bucket.processed_data_bucket.arn}",
-      "${aws_s3_bucket.raw_data_bucket.arn}",
+      "${aws_s3_bucket.raw_data_bucket.arn}"
     ]
   }
 } # Lambda - s3 buckets
@@ -80,6 +80,14 @@ data "aws_iam_policy_document" "s3_list_all_buckets" {
   }
 } # Lambda - list all s3 buckets
 
+data "aws_iam_policy_document" "secrets_manager_access_secrets" {
+  statement {
+    actions = ["secretsmanager:GetSecretValue"]
+
+    resources = ["*"]
+  }
+} # Lambda - allow secrets access
+
 data "aws_iam_policy_document" "s3_read_write_object" {
   statement {
 
@@ -87,7 +95,7 @@ data "aws_iam_policy_document" "s3_read_write_object" {
 
     resources = [
       "${aws_s3_bucket.processed_data_bucket.arn}/*",
-      "${aws_s3_bucket.raw_data_bucket.arn}/*",
+      "${aws_s3_bucket.raw_data_bucket.arn}/*"
     ]
   }
 } # Lambda - s3 objects
@@ -188,6 +196,11 @@ resource "aws_iam_policy" "s3_list_all_buckets_policy" {
   policy      = data.aws_iam_policy_document.s3_list_all_buckets.json
 } # Lambda - Policy
 
+resource "aws_iam_policy" "secrets_manager_get_secret_policy" {
+  name_prefix = "secrets-manager-get-secrets-lambda-"
+  policy      = data.aws_iam_policy_document.secrets_manager_access_secrets.json
+} # Lambda - Policy
+
 resource "aws_iam_policy" "cw_policy" {
   name_prefix = "cloudwatch-policy-etl-lambdas-"
   policy      = data.aws_iam_policy_document.cw_document.json
@@ -234,6 +247,11 @@ resource "aws_iam_role_policy_attachment" "s3_list_all_buckets_policy_attachment
   policy_arn = aws_iam_policy.s3_list_all_buckets_policy.arn
 } # Lambda - Attach
 
+resource "aws_iam_role_policy_attachment" "secrets_manager_get_secret_policy_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.secrets_manager_get_secret_policy.arn
+} # Lambda - Attach
+
 resource "aws_iam_role_policy_attachment" "cw_policy_attachment" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = aws_iam_policy.cw_policy.arn
@@ -257,7 +275,7 @@ resource "aws_iam_role_policy_attachment" "step_function_cw_policy_attachment" {
 resource "aws_iam_role_policy_attachment" "step_function_sns_policy_attachment" {
   role       = aws_iam_role.iam_for_sfn.name
   policy_arn = aws_iam_policy.step_sns_policy.arn
-}
+} # Step Func - Attach
 
 resource "aws_iam_role_policy_attachment" "scheduler_policy_attachment" {
   role       = aws_iam_role.iam_for_scheduler.name
