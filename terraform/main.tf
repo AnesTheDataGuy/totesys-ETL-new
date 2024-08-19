@@ -9,6 +9,14 @@ terraform {
     bucket = "testing-backend-bucket-nc"
     key    = "de-s3-file-reader/terraform.tfstate"
     region = "eu-west-2"
+    # access = var.access_key != "" ? var.access_key : env("AWS_ACCESS_KEY_ID")
+    # secret_key = var.secret_key != "" ? var.secret_key : env("AWS_SECRET_ACCESS_KEY")
+    # cohort_id = env("COHORT_ID")
+    # user = env("USER")
+    # password = env("PASSWORD")
+    # host = env("HOST")
+    # database = env("DATABASE")
+    # port = env("PORT")
   }
 }
 
