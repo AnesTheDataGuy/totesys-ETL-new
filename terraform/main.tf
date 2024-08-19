@@ -7,7 +7,7 @@ terraform {
   }
   backend "s3" {
     bucket = "testing-backend-bucket-nc"
-    key    = "de-s3-file-reader/terraform.tfstate"
+    key    = "de-totesys-etl/terraform.tfstate"
     region = "eu-west-2"
   }
 }
