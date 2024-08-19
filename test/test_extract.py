@@ -4,9 +4,10 @@ import os
 import shutil
 import json
 from moto import mock_aws
-from src.lambda_functions.extract import lambda_handler, get_secret
+from src.lambda_functions.extract import lambda_handler, get_secret, compare_csvs
 from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
+import csv
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
@@ -129,6 +130,14 @@ def secretsmanager_broken(aws_credentials):
         )
         yield secretsmanager
 
+@pytest.fixture(scope="function")
+def read_csv():
+    with open('data/table_data/check_s3_file/test_csv1.csv', 'r') as reader:
+        test_csv_1 = csv.reader(reader)
+    with open('data/table_data/check_s3_file/test_csv2.csv', 'r') as reader:
+        test_csv_2 = csv.reader(reader)
+    return test_csv_1, test_csv_2
+
 
 class DummyContext:  # Dummy context class used for testing
     pass
@@ -151,13 +160,26 @@ class TestGetSecret:
 
 class TestCompareCsvs:
 
-    @pytest.mark.it("Returns a csv containing any changes between the csvs")
-    def test_change_in_database(self):
-        pass
-    
+    @pytest.mark.it("Returns a csv file")
+    def test_file_exists(self, read_csv):
+        result = compare_csvs(*read_csv)
+        assert os.path.exists('differences.csv')
+        
+    @pytest.mark.it(
+            "Returns a csv file containing changes between the two csvs"
+            )
+    def test_change_in_database(self, read_csv):
+        result = compare_csvs(*read_csv)
+        with open('differences.csv', 'r') as reader:
+            differences = csv.reader(reader)
+            assert differences == ['11','12','13','14','15']
+
     @pytest.mark.it("Returns None when both csvs are the same")
     def test_no_change_in_database(self):
-        pass
+        with open('data/table_data/check_s3_file/test_csv1.csv', 'r') as reader:
+            test_csv_1 = csv.reader(reader)
+        result = compare_csvs(test_csv_1, test_csv_1)
+        assert result is None
 
 class TestLambdaHandler:
     # @pytest.mark.skip()
