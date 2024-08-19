@@ -64,11 +64,11 @@ bucket:
 
 all_data_file_path = "/source/"
 
-def create_time_prefix_for_file():
 
+def create_time_prefix_for_file():
     """
     Retrieves the current time at which the lambda function is invoked for use in
-    naming files and in passing a value for the transform function
+    the file structure and in returning a value for the lambda handler
     """
     current_time = dt.now()
     year = current_time.year
@@ -76,20 +76,19 @@ def create_time_prefix_for_file():
     day = current_time.day
     hour = current_time.hour
     if len(str(hour)) == 1:
-        hour = "0"+str(hour)
+        hour = "0" + str(hour)
     minute = current_time.minute
     if len(str(minute)) == 1:
-        minute = "0"+str(minute)
+        minute = "0" + str(minute)
     second = current_time.second
     if len(str(second)) == 1:
-        second = "0"+str(second)
+        second = "0" + str(second)
     return f"{year}_{month}_{day}_{hour}:{minute}:{second}_"
 
 
 def get_secret(secret_name="totesys_database_credentials"):
-    
     """
-    Initialises a boto3 secrets manager client and retrieves secret from secret manager 
+    Initialises a boto3 secrets manager client and retrieves secret from secrets manager
     based on argument given, with the default argument set to the database credentials.
     The secret returned should be a dictionary with 5 keys:
     user - the username for the database
@@ -113,7 +112,6 @@ def get_secret(secret_name="totesys_database_credentials"):
 
 
 def connect_to_bucket(client):
-
     """
     Searches for a raw data bucket within an AWS account and returns bucket name if
     bucket is found or raises exception if bucket is not found.
@@ -123,28 +121,30 @@ def connect_to_bucket(client):
         if bucket["Name"].startswith("totesys-raw-data-"):
             return bucket["Name"]
     logging.error("No raw data bucket found")
-    raise Exception("No raw data bucket found")          
+    raise Exception("No raw data bucket found")
+
 
 def connect_to_db(credentials):
-    
     """
-    Uses the secret obtained in the get_secret method to establish a connection to the database
+    Uses the secret obtained in the get_secret method to establish a 
+    connection to the database
     """
     return Connection(
-            user=credentials["user"],
-            password=credentials["password"],
-            host=credentials["host"],
-            database=credentials["database"],
-            port=credentials["port"]
-        )
+        user=credentials["user"],
+        password=credentials["password"],
+        host=credentials["host"],
+        database=credentials["database"],
+        port=credentials["port"],
+    )
 
-def create_and_upload_to_bucket(data,client,bucket,filename):
 
+def create_and_upload_to_bucket(data, client, bucket, filename):
     """
-    Converts a table from a database into a CSV file and uploads that CSV file to a specified bucket,
-    raising an exception if there's an error in uploading the file.
+    Converts a table from a database into a CSV file and uploads that CSV file to a 
+    specified bucket, raising an exception if there's an error in uploading the file.
+    The data argument is a list of lists.
     """
-    file_to_save = StringIO()            
+    file_to_save = StringIO()
     csv.writer(file_to_save).writerows(data)
     file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
@@ -159,11 +159,25 @@ def create_and_upload_to_bucket(data,client,bucket,filename):
         logging.error(e)
         raise Exception("Failed to upload file")
 
-def lambda_handler(event, context):
-
+def compare_csvs(csv1, csv2):
     """
-    Wrapper function that allows us to run our utils functions together, and allows us to 
-    invoke this function in AWS
+    Takes two csvs and compares the differences between them, returning None if no 
+    differences found.
+
+    Args:
+    csv1 - Csv containing previous database data
+    csv2 - Csv containing new database data
+
+    Returns:
+    csv file containing all changes to database (if csv1 and csv2 are not equal)
+    None (if csv1 and csv2 are equal)
+    """
+    pass
+
+def lambda_handler(event, context):
+    """
+    Wrapper function that allows us to run our utils functions together, and allows 
+    us to invoke them all in AWS
     """
     db_credentials = get_secret()
     s3_client = boto3.client("s3")
@@ -171,9 +185,9 @@ def lambda_handler(event, context):
     time_prefix = create_time_prefix_for_file()
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
     pprint(bucket_content)
-   
-    if bucket_content.get('Contents'):
-        bucket_files = [dict_['Key'] for dict_ in bucket_content['Contents']]
+
+    if bucket_content.get("Contents"):
+        bucket_files = [dict_["Key"] for dict_ in bucket_content["Contents"]]
     else:
         bucket_files = []
     print(f"\n <<<bucket_files: ")
@@ -194,16 +208,18 @@ def lambda_handler(event, context):
             data_rows = conn.run(query)
             file_data = [header] + data_rows
 
-            if not f"{data_table_name}_original.csv" in bucket_files:              
-                create_and_upload_to_bucket(file_data,s3_client,raw_data_bucket,data_table_name)
+            if not f"{data_table_name}_original.csv" in bucket_files:
+                create_and_upload_to_bucket(
+                    file_data, s3_client, raw_data_bucket, data_table_name
+                )
                 print("\n _ORIGINAL CSV FILES NOT FOUND")
             else:
                 print("\n _ORIGINAL CSV FILES FOUND")
-                file_buffer = StringIO()            
+                file_buffer = StringIO()
                 csv.writer(file_buffer).writerows(file_data)
                 print(f"\n FILE BUFFER: {file_buffer}")
-                #file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
-                
+                # file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
+
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
 
     except Error as e:
@@ -211,7 +227,7 @@ def lambda_handler(event, context):
         raise Exception(f"Connection to database failed: {e}")
 
     finally:
-        if 'conn' in locals():
+        if "conn" in locals():
             conn.close()
 
     return {"time_prefix": time_prefix}
