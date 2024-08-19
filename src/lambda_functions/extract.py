@@ -188,17 +188,12 @@ def lambda_handler(event, context):
     raw_data_bucket = connect_to_bucket(s3_client)
     time_prefix = create_time_prefix_for_file()
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
-    pprint(bucket_content)
 
     if bucket_content.get("Contents"):
         bucket_files = [dict_["Key"] for dict_ in bucket_content["Contents"]]
     else:
         bucket_files = []
-    print(f"\n <<<bucket_files: ")
 
-    """
-    TODO: Below can all be one util function
-    """
     try:
         conn = connect_to_db(db_credentials)
         for data_table_name in data_tables:
@@ -216,9 +211,7 @@ def lambda_handler(event, context):
                 create_and_upload_to_bucket(
                     file_data, s3_client, raw_data_bucket, data_table_name
                 )
-                print("\n _ORIGINAL CSV FILES NOT FOUND")
             else:
-                print("\n _ORIGINAL CSV FILES FOUND")
                 file_buffer = StringIO()
                 csv.writer(file_buffer).writerows(file_data)
                 print(f"\n FILE BUFFER: {file_buffer}")
@@ -235,8 +228,3 @@ def lambda_handler(event, context):
             conn.close()
 
     return {"time_prefix": time_prefix}
-
-x = compare_csvs(0, 0)
-for i in x:
-    j = [k for k in list(i) if not '' == k]
-    print(j[1])
