@@ -34,7 +34,7 @@ resource "aws_s3_object" "test_lambda_zip" { #Upload the lambda zip to lambda_bu
   metadata = {
     last_updated = timestamp()
   }
-  
+
 }
 
 resource "aws_s3_object" "extract_lambda_zip" {
