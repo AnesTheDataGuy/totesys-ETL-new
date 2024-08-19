@@ -206,6 +206,16 @@ class TestCreateAndUploadToBucket:
         output = s3.list_objects_v2(Bucket="totesys-raw-data-000000")['Contents'][0]['Key']
         assert output == all_data_file_path + file_name + '_original.csv'
 
+    @pytest.mark.it("Returns exception when trying to upload wrong bucket")
+    def test_function_returns_exception_when_bucket_is_invalid(self, s3):
+        bucket_name = 'nonsense_bucket'
+        file_name = 'test_file'
+        all_data_file_path = "/source/"
+        data = [['A', 'B', 'C'], [1,2,3], [4,5,6]]
+        with pytest.raises(Exception):
+            create_and_upload_to_bucket(data, s3, bucket_name, file_name)
+
+
 class TestCompareCsvs:
 
     @pytest.mark.it("Returns a csv file")
