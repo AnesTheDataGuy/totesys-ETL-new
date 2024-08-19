@@ -139,6 +139,22 @@ def connect_to_db(credentials):
         port=credentials["port"],
     )
 
+def query_db(dt_name,conn):
+    """
+    Does two queries to the database:
+    1. Name of table's columns --> header of csv format file
+    2. All table's content
+    Returns data formatted to be saved as csv file
+    """
+    query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{dt_name}';"
+    column_names = conn.run(query)
+    header = []
+    for column in column_names:
+        header.append(column[0])
+
+    query = f"SELECT * FROM {dt_name};"
+    data_rows = conn.run(query)
+    return [header] + data_rows
 
 def create_and_upload_to_bucket(data, client, bucket, filename):
     """
@@ -198,15 +214,7 @@ def lambda_handler(event, context):
     try:
         conn = connect_to_db(db_credentials)
         for data_table_name in data_tables:
-            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{data_table_name}';"
-            column_names = conn.run(query)
-            header = []
-            for column in column_names:
-                header.append(column[0])
-
-            query = f"SELECT * FROM {data_table_name};"
-            data_rows = conn.run(query)
-            file_data = [header] + data_rows
+            file_data = query_db(data_table_name,conn)
 
             if not f"{data_table_name}_original.csv" in bucket_files:
                 create_and_upload_to_bucket(

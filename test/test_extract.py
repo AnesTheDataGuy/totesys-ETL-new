@@ -4,7 +4,7 @@ import os
 import shutil
 import json
 from moto import mock_aws
-from src.lambda_functions.extract import create_and_upload_to_bucket, create_time_prefix_for_file, connect_to_bucket, connect_to_db, lambda_handler, get_secret, compare_csvs
+from src.lambda_functions.extract import create_and_upload_to_bucket, create_time_prefix_for_file, connect_to_bucket, connect_to_db, query_db, lambda_handler, get_secret, compare_csvs
 from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
 import csv
@@ -185,7 +185,6 @@ class TestConnectToBucket:
         with pytest.raises(Exception):
             connect_to_bucket(s3_no_buckets)
 
-
 class TestConnectToDB:
 
     @pytest.mark.it("Connect to DB returns credentials")
@@ -193,6 +192,16 @@ class TestConnectToDB:
         inp = get_secret()
         result = connect_to_db(inp) 
         assert type(result) is Connection
+
+class TestQueryDB:
+
+    @pytest.mark.it("Return valid csv formatted data (header + table rows)")
+    def test_db_query_returns_valid_csv_format_data(self, secretsmanager):
+        dt = "currency"
+        expected_header = ['currency_id', 'currency_code', 'created_at', 'last_updated']
+        #expected_row5 = [6, 'GBP', datetime.datetime(2023, 8, 12, 12, 0), datetime.datetime(2023, 8, 12, 12, 0)]
+        conn = connect_to_db(get_secret()) 
+        assert query_db(dt,conn)[6][1] == 'GBP'
 
 class TestCreateAndUploadToBucket:
 
