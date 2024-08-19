@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket = "duo-terraform-state-bucket"
+    bucket = "testing-backend-bucket-nc"
     key    = "de-totesys-etl/terraform.tfstate"
     region = "eu-west-2"
   }
