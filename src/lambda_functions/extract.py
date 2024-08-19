@@ -2,6 +2,8 @@ import boto3
 import logging
 import csv
 import json
+import re
+import subprocess
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
@@ -172,7 +174,9 @@ def compare_csvs(csv1, csv2):
     csv file containing all changes to database (if csv1 and csv2 are not equal)
     None (if csv1 and csv2 are equal)
     """
-    pass
+    regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
+    x = re.findall(regex, subprocess.run(("echo $(diff data/test_csv_1.csv data/test_csv_2.csv")))
+    return x
 
 def lambda_handler(event, context):
     """
@@ -231,3 +235,8 @@ def lambda_handler(event, context):
             conn.close()
 
     return {"time_prefix": time_prefix}
+
+x = compare_csvs(0, 0)
+for i in x:
+    j = [k for k in list(i) if not '' == k]
+    print(j[1])
