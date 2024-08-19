@@ -85,7 +85,7 @@ def create_time_prefix_for_file():
     second = current_time.second
     if len(str(second)) == 1:
         second = "0" + str(second)
-    return f"{year}_{month}_{day}_{hour}:{minute}:{second}_"
+    return f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
 
 def get_secret(secret_name="totesys_database_credentials"):
@@ -156,6 +156,7 @@ def create_and_upload_to_bucket(data, client, bucket, filename):
             Bucket=bucket,
             Key=f"{all_data_file_path}{filename}_original.csv",
         )
+        return 'File successfully uploaded'
 
     except ClientError as e:
         logging.error(e)

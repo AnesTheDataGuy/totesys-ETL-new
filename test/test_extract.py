@@ -4,10 +4,13 @@ import os
 import shutil
 import json
 from moto import mock_aws
-from src.lambda_functions.extract import lambda_handler, get_secret, compare_csvs
+from src.lambda_functions.extract import create_and_upload_to_bucket, create_time_prefix_for_file, connect_to_bucket, connect_to_db, lambda_handler, get_secret, compare_csvs
 from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
 import csv
+from unittest.mock import patch
+from datetime import datetime as dt
+from pg8000.native import Connection    
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
@@ -142,11 +145,22 @@ def read_csv():
 class DummyContext:  # Dummy context class used for testing
     pass
 
+class TestTimePrefix:
+
+    @patch('src.lambda_functions.extract.dt')
+    @pytest.mark.it("Create time prefix function returns formatted datetime")
+    def test_correct_time_is_returned(self, patched_dt):
+        patched_dt.now.return_value = dt(2024,1,1)
+        patched_dt.side_effect = lambda *args, **kw: dt(*args, **kw)
+        result = create_time_prefix_for_file()
+        patched_dt.now.assert_called_once()
+        assert result == '2024/1/1/00:00:00/'
 
 class TestGetSecret:
 
     @pytest.mark.it("get secret returns the correct credentials data")
     def test_get_secret_returns_correct_credentials(self, secretsmanager):
+        print(get_secret())
         assert get_secret()["user"] == PG_USER
         assert get_secret()["password"] == PG_PASSWORD
         assert get_secret()["host"] == PG_HOST
@@ -157,6 +171,40 @@ class TestGetSecret:
     def test_get_secret_failed(self, secretsmanager):
         with pytest.raises(Exception):
             get_secret("imposter_steve")
+
+class TestConnectToBucket:
+
+    @pytest.mark.it("Connect to bucket function returns bucket name")
+    def test_connect_to_bucket_returns_correct_reponse(self, s3):
+        result = connect_to_bucket(s3)
+        assert result == "totesys-raw-data-000000"
+
+    @pytest.mark.it(
+            "Connect to bucket function returns exception when no bucket is found")
+    def test_connect_to_bucket_returns_exception(self, s3_no_buckets):
+        with pytest.raises(Exception):
+            connect_to_bucket(s3_no_buckets)
+
+
+class TestConnectToDB:
+
+    @pytest.mark.it("Connect to DB returns credentials")
+    def test_connect_to_db_returns_valid_response(self, secretsmanager):
+        inp = get_secret()
+        result = connect_to_db(inp) 
+        assert type(result) is Connection
+
+class TestCreateAndUploadToBucket:
+
+    @pytest.mark.it("Connects and uploads to bucket")
+    def test_function_puts_object_correctly(self, s3):
+        bucket_name = connect_to_bucket(s3)
+        file_name = 'test_file'
+        all_data_file_path = "/source/"
+        data = [['A', 'B', 'C'], [1,2,3], [4,5,6]]
+        assert create_and_upload_to_bucket(data, s3, bucket_name, file_name)
+        output = s3.list_objects_v2(Bucket="totesys-raw-data-000000")['Contents'][0]['Key']
+        assert output == all_data_file_path + file_name + '_original.csv'
 
 class TestCompareCsvs:
 
