@@ -1,6 +1,6 @@
 import pytest, boto3, os, shutil
 from moto import mock_aws
-from src.test_functions.transform_testing import lambda_handler as transform
+from src.lambda_functions.transform import lambda_handler as transform
 from datetime import datetime as dt
 
 
@@ -29,54 +29,120 @@ def s3(aws_credentials):
         )
         yield s3
 
-
-@pytest.fixture(scope="function")
-def s3_raw_only(aws_credentials):
-    """Mocked S3 client with raw data bucket."""
-    with mock_aws():
-        s3 = boto3.client("s3")
-        s3.create_bucket(
-            Bucket="totesys-raw-data-000000",
-            CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
-        )
-        yield s3
-
-
-@pytest.fixture(scope="function")
-def s3_proc_only(aws_credentials):
-    """Mocked S3 client with processed data bucket."""
-    with mock_aws():
-        s3 = boto3.client("s3")
-        s3.create_bucket(
-            Bucket="totesys-processed-data-000000",
-            CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
-        )
-        yield s3
-
-
-@pytest.fixture(scope="function")
-def s3_no_buckets(aws_credentials):
-    """Mocked S3 client with no buckets."""
-    with mock_aws():
-        s3_nobuckets = boto3.client("s3")
-        yield s3_nobuckets
-
-
 class DummyContext:  # Dummy context class used for testing
     pass
 
 
-event = {}
+event = {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}
 context = DummyContext()
 
 
-def test_s3_finds_no_buckets(s3_no_buckets):
-    assert transform(event, context) == "No buckets found"
+def test_transform_lands_data_in_processed_data_bucket(s3):
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/sales_order.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/design.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/currency.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/staff.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/counterparty.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/address.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/department.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/purchase_order.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/payment_type.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/payment.csv'
+    )
+    s3.put_object(
+        Body="""test,test2,test3
+                1,2,3
+                5,6,7
+                8,9,10""",
+        Bucket='totesys-raw-data-000000',
+        Key='/history/YYYY/MM/DD/HH:MM:SS/transaction.csv'
+    )
 
+    expected_pq = {'/history/YYYY/MM/DD/HH:MM:SS/address.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/design.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/currency.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/staff.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/counterparty.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/sales_order.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/department.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/purchase_order.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/payment_type.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/payment.parquet': 0,
+                   '/history/YYYY/MM/DD/HH:MM:SS/transaction.parquet': 0}
 
-def test_s3_finds_raw_bucket_only(s3_raw_only):
-    assert transform(event, context) == "No processed data bucket found"
+    res = transform(event, context)
+    proc_data_bucket_objects = s3.list_objects(Bucket="totesys-processed-data-000000")['Contents']
 
-
-def test_s3_finds_processed_bucket_only(s3_proc_only):
-    assert transform(event, context) == "No raw data bucket found"
+    for parquet in proc_data_bucket_objects:
+        assert parquet['Key'] in expected_pq
+    
+    assert res == {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}

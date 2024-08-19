@@ -53,6 +53,9 @@ def convert_csv_to_parquet(csv):
     Returns:
         parquet (string): This string contains parquet file data converted from csv format.
     """
+    if csv[-4:] != ".csv":
+        return f"{csv} is not a .csv file."
+    
     s3_client = boto3.client("s3")
 
     raw_data_bucket, _ = finds_data_buckets()

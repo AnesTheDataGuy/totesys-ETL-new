@@ -4,17 +4,17 @@ from botocore.exceptions import ClientError
 from src.utils.transform_utils import finds_data_buckets, convert_csv_to_parquet
 
 csvs = [
-    "sales_order",
-    "design",
-    "currency",
-    "staff",
-    "counterparty",
-    "address",
-    "department",
-    "purchase_order",
-    "payment_type",
-    "payment",
-    "transaction",
+    "sales_order.csv",
+    "design.csv",
+    "currency.csv",
+    "staff.csv",
+    "counterparty.csv",
+    "address.csv",
+    "department.csv",
+    "purchase_order.csv",
+    "payment_type.csv",
+    "payment.csv",
+    "transaction.csv",
 ]
 
 def lambda_handler(event, context):
@@ -37,12 +37,12 @@ def lambda_handler(event, context):
 
     for file in csvs:
         parquet = convert_csv_to_parquet(file)
-
+        file = file[:-4]
         try:
             s3_client.put_object(
                 Body=parquet,
                 Bucket=processed_data_bucket,
-                Key=f"{prefix}{file}.parquet",
+                Key=f"/history/{prefix}{file}.parquet",
             )
 
         except ClientError as e:
