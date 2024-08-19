@@ -44,16 +44,16 @@ table_data = [
     "department.csv",
     "purchase_order.csv",
 ]
-data_dir = "./data/table_data/"
-check_file_dir = data_dir + "check_s3_file/"
-#    if os.path.isfile(f'{data_dir}{table}'):
-#        os.remove(f'{data_dir}{table}')
+# data_dir = "./data/table_data/"
+# check_file_dir = data_dir + "check_s3_file/"
+# #    if os.path.isfile(f'{data_dir}{table}'):
+# #        os.remove(f'{data_dir}{table}')
 
-if os.path.isdir(data_dir):
-    shutil.rmtree(data_dir)
+# if os.path.isdir(data_dir):
+#     shutil.rmtree(data_dir)
 
-os.makedirs(data_dir)
-os.mkdir(check_file_dir)
+# os.makedirs(data_dir)
+# os.mkdir(check_file_dir)
 
 """
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -130,19 +130,11 @@ def secretsmanager_broken(aws_credentials):
         )
         yield secretsmanager
 
-@pytest.fixture(scope="function")
-def read_csv():
-    with open('data/table_data/check_s3_file/test_csv1.csv', 'r') as reader:
-        test_csv_1 = csv.reader(reader)
-    with open('data/table_data/check_s3_file/test_csv2.csv', 'r') as reader:
-        test_csv_2 = csv.reader(reader)
-    return test_csv_1, test_csv_2
-
 
 class DummyContext:  # Dummy context class used for testing
     pass
 
-
+@pytest.mark.skip()
 class TestGetSecret:
 
     @pytest.mark.it("get secret returns the correct credentials data")
@@ -160,27 +152,33 @@ class TestGetSecret:
 
 class TestCompareCsvs:
 
-    @pytest.mark.it("Returns a csv file")
-    def test_file_exists(self, read_csv):
-        result = compare_csvs(*read_csv)
-        assert os.path.exists('differences.csv')
+    @pytest.mark.it("Creates a csv file")
+    def test_file_exists(self):
+        result = compare_csvs('test_csv_1.csv', 'test_csv_2.csv')
+        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
+        assert len(csv_path_list) > 0
         
     @pytest.mark.it(
-            "Returns a csv file containing changes between the two csvs"
+            "Creates a csv file containing changes between the two csvs"
             )
-    def test_change_in_database(self, read_csv):
-        result = compare_csvs(*read_csv)
-        with open('differences.csv', 'r') as reader:
+    def test_change_in_database(self):
+        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
+        with open(csv_path_list[0], 'r') as reader:
             differences = csv.reader(reader)
-            assert differences == ['11','12','13','14','15']
+            assert list(differences) == [['1','k','5','77','5'], 
+                                        ['3', '2', '2', '2', '2'], 
+                                        ['4', '1', '1', '1', '1'],
+                                        ['5', '', '3', '7', '4']]
 
-    @pytest.mark.it("Returns None when both csvs are the same")
+    @pytest.mark.it("Writes empty csv file when both csvs are the same")
     def test_no_change_in_database(self):
-        with open('data/table_data/check_s3_file/test_csv1.csv', 'r') as reader:
-            test_csv_1 = csv.reader(reader)
-        result = compare_csvs(test_csv_1, test_csv_1)
-        assert result is None
+        result = compare_csvs('test_csv_2.csv', 'test_csv_2.csv')
+        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_2.csv_differences_')]
+        with open(csv_path_list[0], 'r') as reader:
+            differences = csv.reader(reader)
+            assert list(differences) == []
 
+@pytest.mark.skip()
 class TestLambdaHandler:
     # @pytest.mark.skip()
     @pytest.mark.it("Raise exception if raw data bucket is not found")

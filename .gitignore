@@ -8,3 +8,4 @@ terraform/.terraform.lock.hcl
 *.zip
 data/*
 .coverage
+*.csv

@@ -85,7 +85,7 @@ def create_time_prefix_for_file():
     second = current_time.second
     if len(str(second)) == 1:
         second = "0" + str(second)
-    return f"{year}_{month}_{day}_{hour}:{minute}:{second}_"
+    return f"{year}_{month}_{day}_{hour}:{minute}:{second}"
 
 
 def get_secret(secret_name="totesys_database_credentials"):
@@ -175,8 +175,16 @@ def compare_csvs(csv1, csv2):
     None (if csv1 and csv2 are equal)
     """
     regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
-    x = re.findall(regex, subprocess.run(("echo $(diff data/test_csv_1.csv data/test_csv_2.csv")))
-    return x
+    command = f"echo $(diff data/table_data/check_s3_file/{csv1} data/table_data/check_s3_file/{csv2})"
+    differences = subprocess.run(command, capture_output=True, shell=True)
+    changes_to_database = re.findall(regex, differences.stdout.decode())
+    with open(f"{csv1}_differences_{create_time_prefix_for_file()}.csv", "w", newline='') as f:
+        csvwriter = csv.writer(f)
+        for change in changes_to_database:
+            change_list = [k for k in list(change) if not '' == k]
+            csvwriter.writerow(change_list[1].split(','))
+
+    return changes_to_database
 
 def lambda_handler(event, context):
     """
@@ -235,8 +243,3 @@ def lambda_handler(event, context):
             conn.close()
 
     return {"time_prefix": time_prefix}
-
-x = compare_csvs(0, 0)
-for i in x:
-    j = [k for k in list(i) if not '' == k]
-    print(j[1])
