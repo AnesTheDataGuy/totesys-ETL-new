@@ -88,4 +88,4 @@ check-coverage:
 run-checks: security-test run-black unit-test check-coverage
 
 ## Runs all of file
-all: requirements lambda_requirements dev-setup run-checks
+all: requirements lambda-requirements dev-setup run-checks
