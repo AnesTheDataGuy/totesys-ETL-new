@@ -1,1 +1,0 @@
-1c1 < 9,l,p,banana,o --- > 1,k,5,77,apple 3,4c3 < 3,2,5,6,7 < No newline at end of file \ 1,1,1,1,1 --- > 2,2,2,2,2

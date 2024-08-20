@@ -1,8 +1,17 @@
 data "archive_file" "extract_lambda" {
   type             = "zip"
   output_file_mode = "0666"
-  source_file      = "${path.module}/../src/lambda_functions/extract.py"
-  output_path      = "${path.module}/../zip_code/extract.zip"
+  source {
+    content  = file("${path.module}/../src/lambda_functions/extract.py")
+    filename = "extract.py"
+  }
+
+  source {
+    content  = file("${path.module}/../src/utils/extract_utils.py")
+    filename = "src/utils/extract_utils.py"
+  }
+
+  output_path = "${path.module}/../zip_code/extract.zip"
 }
 
 data "archive_file" "load_lambda" {
@@ -18,7 +27,6 @@ data "archive_file" "transform_lambda" {
   source_file      = "${path.module}/../src/lambda_functions/transform.py"
   output_path      = "${path.module}/../zip_code/transform.zip"
 }
-
 
 resource "aws_s3_object" "extract_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket

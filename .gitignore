@@ -6,7 +6,9 @@ layer/*
 terraform/.terraform
 terraform/.terraform.lock.hcl
 *.zip
+data/*
+.coverage
+*.csv
 data/table_data/*
 .terraform.lock
-.coverage
 
