@@ -64,10 +64,10 @@ bucket:
                     design_source/
 """
 
-all_data_file_path = "/source/"
+source_path = "/source/"
 
 
-def create_time_prefix_for_file():
+def create_time_path():
     """
     Retrieves the current time at which the lambda function is invoked for use in
     the file structure and in returning a value for the lambda handler
@@ -105,8 +105,6 @@ def get_secret(secret_name="totesys_database_credentials"):
     try:
         get_secret_value_response = client.get_secret_value(SecretId=secret_name)
     except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         logging.error(e)
         raise Exception(f"Can't retrieve secret due to {e}")
 
@@ -144,7 +142,7 @@ def query_db(dt_name,conn):
     Does two queries to the database:
     1. Name of table's columns --> header of csv format file
     2. All table's content
-    Returns data formatted to be saved as csv file
+    Returns data in csv format (header + data rows)
     """
     query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{dt_name}';"
     column_names = conn.run(query)
@@ -170,7 +168,7 @@ def create_and_upload_to_bucket(data, client, bucket, filename):
         response = client.put_object(
             Body=file_to_save,
             Bucket=bucket,
-            Key=f"{all_data_file_path}{filename}_original.csv",
+            Key=f"{source_path}{filename}_original.csv",
         )
         return 'File successfully uploaded'
 
@@ -192,7 +190,8 @@ def compare_csvs(csv1, csv2):
     None (if csv1 and csv2 are equal)
     """
     regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
-    x = re.findall(regex, subprocess.run(("echo $(diff data/test_csv_1.csv data/test_csv_2.csv")))
+    #x = re.findall(regex, subprocess.run(("echo $(diff data/test_csv_1.csv data/test_csv_2.csv")))
+    x = re.findall(regex, subprocess.run(("echo $(diff csv1.csv csv2.csv")))
     return x
 
 def lambda_handler(event, context):
@@ -203,7 +202,7 @@ def lambda_handler(event, context):
     db_credentials = get_secret()
     s3_client = boto3.client("s3")
     raw_data_bucket = connect_to_bucket(s3_client)
-    time_prefix = create_time_prefix_for_file()
+    time_prefix = create_time_path()
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
 
     if bucket_content.get("Contents"):
@@ -225,7 +224,10 @@ def lambda_handler(event, context):
                 csv.writer(file_buffer).writerows(file_data)
                 print(f"\n FILE BUFFER: {file_buffer}")
                 # file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
-
+                s3_response = s3_client.get_object(Bucket=raw_data_bucket,Key=f"{source_path}{data_table_name}_original.csv",)
+                source_content = s3_response['Body'].read().decode('utf-8')
+                source_csv = csv.reader(StringIO(source_content))
+                diff_csv = compare_csvs(file_buffer,source_csv)
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
 
     except Error as e:
