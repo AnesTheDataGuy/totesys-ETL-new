@@ -8,7 +8,6 @@ from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
 from io import StringIO
-from pprint import pprint
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -151,7 +150,7 @@ def create_and_upload_to_bucket(data, client, bucket, filename):
     file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
     try:
-        response = client.put_object(
+        client.put_object(
             Body=file_to_save,
             Bucket=bucket,
             Key=f"{all_data_file_path}{filename}_original.csv",
@@ -211,7 +210,7 @@ def lambda_handler(event, context):
             data_rows = conn.run(query)
             file_data = [header] + data_rows
 
-            if not f"{data_table_name}_original.csv" in bucket_files:
+            if f"{data_table_name}_original.csv" not in bucket_files:
                 create_and_upload_to_bucket(
                     file_data, s3_client, raw_data_bucket, data_table_name
                 )
