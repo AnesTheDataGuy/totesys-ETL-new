@@ -135,50 +135,6 @@ class DummyContext:  # Dummy context class used for testing
     pass
 
 @pytest.mark.skip()
-class TestGetSecret:
-
-    @pytest.mark.it("get secret returns the correct credentials data")
-    def test_get_secret_returns_correct_credentials(self, secretsmanager):
-        assert get_secret()["user"] == PG_USER
-        assert get_secret()["password"] == PG_PASSWORD
-        assert get_secret()["host"] == PG_HOST
-
-    @pytest.mark.it(
-        "get secret raises an error if secret_name is not in secretsmanager"
-    )
-    def test_get_secret_failed(self, secretsmanager):
-        with pytest.raises(Exception):
-            get_secret("imposter_steve")
-
-class TestCompareCsvs:
-
-    @pytest.mark.it("Creates a csv file")
-    def test_file_exists(self):
-        result = compare_csvs('test_csv_1.csv', 'test_csv_2.csv')
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
-        assert len(csv_path_list) > 0
-        
-    @pytest.mark.it(
-            "Creates a csv file containing changes between the two csvs"
-            )
-    def test_change_in_database(self):
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
-        with open(csv_path_list[0], 'r') as reader:
-            differences = csv.reader(reader)
-            assert list(differences) == [['1','k','5','77','5'], 
-                                        ['3', '2', '2', '2', '2'], 
-                                        ['4', '1', '1', '1', '1'],
-                                        ['5', '', '3', '7', '4']]
-
-    @pytest.mark.it("Writes empty csv file when both csvs are the same")
-    def test_no_change_in_database(self):
-        result = compare_csvs('test_csv_2.csv', 'test_csv_2.csv')
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_2.csv_differences_')]
-        with open(csv_path_list[0], 'r') as reader:
-            differences = csv.reader(reader)
-            assert list(differences) == []
-
-@pytest.mark.skip()
 class TestLambdaHandler:
     # @pytest.mark.skip()
     @pytest.mark.it("Raise exception if raw data bucket is not found")

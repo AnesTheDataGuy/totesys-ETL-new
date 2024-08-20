@@ -1,15 +1,17 @@
-data "archive_file" "test_lambda" {
-  type             = "zip"
-  output_file_mode = "0666"
-  source_file      = "${path.module}/../src/lambda_functions/test_lambda.py"
-  output_path      = "${path.module}/../zip_code/test_lambda.zip"
-}
-
 data "archive_file" "extract_lambda" {
   type             = "zip"
   output_file_mode = "0666"
-  source_file      = "${path.module}/../src/lambda_functions/extract.py"
-  output_path      = "${path.module}/../zip_code/extract.zip"
+  source {
+    content  = file("${path.module}/../src/lambda_functions/extract.py")
+    filename = "extract.py"
+  }
+
+  source {
+    content  = file("${path.module}/../src/utils/extract_utils.py")
+    filename = "src/utils/extract_utils.py"
+  }
+
+  output_path = "${path.module}/../zip_code/extract.zip"
 }
 
 data "archive_file" "load_lambda" {
@@ -24,17 +26,6 @@ data "archive_file" "transform_lambda" {
   output_file_mode = "0666"
   source_file      = "${path.module}/../src/lambda_functions/transform.py"
   output_path      = "${path.module}/../zip_code/transform.zip"
-}
-
-resource "aws_s3_object" "test_lambda_zip" { #Upload the lambda zip to lambda_bucket.
-  bucket = aws_s3_bucket.lambda_bucket.bucket
-  source = "${path.module}/../zip_code/test_lambda.zip"
-  key    = "test_lambda.zip"
-  etag   = filebase64sha256(data.archive_file.test_lambda.output_path)
-  metadata = {
-    last_updated = timestamp()
-  }
-
 }
 
 resource "aws_s3_object" "extract_lambda_zip" {
@@ -68,18 +59,6 @@ resource "aws_s3_object" "transform_lambda_zip" {
   metadata = {
     last_updated = timestamp()
   }
-}
-
-resource "aws_lambda_function" "test_lambda" { #Provision the lambda
-  s3_bucket        = aws_s3_bucket.lambda_bucket.id
-  s3_key           = aws_s3_object.test_lambda_zip.key
-  function_name    = "test_lambda"
-  source_code_hash = data.archive_file.test_lambda.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  layers           = [aws_lambda_layer_version.lambda_layer.arn]
-  runtime          = var.python_runtime
-  handler          = "test_lambda.lambda_handler"
-  timeout          = 120
 }
 
 resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
