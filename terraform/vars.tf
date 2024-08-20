@@ -38,6 +38,7 @@ variable "python_runtime" {
   default = "python3.12"
 }
 
+# variables for secrets manager
 variable "UN" {
   type = string
 }
