@@ -121,7 +121,7 @@ def convert_csv_to_parquet(csv):
     df = pl.read_csv(data_buffer_csv)
 
     data_buffer_parquet = BytesIO()
-    parquet = df.to_parquet(data_buffer_parquet, engine="pyarrow")
+    parquet = df.write_parquet(data_buffer_parquet)
     data_buffer_parquet.seek(0)
 
     parquet = data_buffer_parquet.read()

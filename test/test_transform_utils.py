@@ -1,9 +1,10 @@
 import pytest, boto3, os
 from moto import mock_aws
-from src.utils.transform_utils import finds_data_buckets, convert_csv_to_parquet
+from src.lambda_functions.transform import finds_data_buckets, convert_csv_to_parquet
 from datetime import datetime as dt
-import pandas as pd
+import polars as pl
 from io import BytesIO
+from polars.testing import assert_frame_equal
 
 
 @pytest.fixture(scope="function")
@@ -88,20 +89,17 @@ def test_csv_file_not_found(s3):
 
 def test_convert_csv_to_parquet(s3):
     s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
+        Body="test,test2,test3\n1,2,3\n5,6,7\n8,9,10",
         Bucket='totesys-raw-data-000000',
         Key='test.csv'
     )
     result = convert_csv_to_parquet('test.csv')
     parquet_buffer = BytesIO(result)
-    df_read_parquet = pd.read_parquet(parquet_buffer)
+    df_read_parquet = pl.read_parquet(parquet_buffer)
     data = {'test': [1,5,8], 'test2': [2,6,9], 'test3': [3,7,10]}
-    df = pd.DataFrame(data)
-
-    assert isinstance(df_read_parquet, pd.DataFrame)
+    df = pl.DataFrame(data)
+    
+    assert isinstance(df_read_parquet, pl.DataFrame)
     assert df.equals(df_read_parquet)
 
 def test_returns_appropriate_message_if_file_is_not_csv(s3):

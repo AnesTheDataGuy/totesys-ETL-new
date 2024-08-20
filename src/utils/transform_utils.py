@@ -1,7 +1,7 @@
 import boto3
 import logging
 from io import StringIO, BytesIO
-import pandas as pd
+import polars as pl
 from botocore.exceptions import ClientError
 
 def finds_data_buckets():
@@ -68,10 +68,10 @@ def convert_csv_to_parquet(csv):
         return "csv file not found"
 
     data_buffer_csv = StringIO(csv_data)
-    df = pd.read_csv(data_buffer_csv)
+    df = pl.read_csv(data_buffer_csv)
 
     data_buffer_parquet = BytesIO()
-    parquet = df.to_parquet(data_buffer_parquet, engine="pyarrow")
+    parquet = df.write_parquet(data_buffer_parquet)
     data_buffer_parquet.seek(0)
 
     parquet = data_buffer_parquet.read()
