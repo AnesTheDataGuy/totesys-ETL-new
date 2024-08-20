@@ -41,8 +41,8 @@ requirements: create-environment
 # Populates Layer folder with packages required for Lambda functions to run
 lambda_requirements: create-environment
 	$(call execute_in_env, $(PIP) install -r lambda_reqs/extract_requirements.txt --target layer/extract_layer/python)
-	$(call execute_in_env, $(PIP) install -r lambda_reqs/transform_requirements.txt --target layer/transform_layer/python)
-	$(call execute_in_env, $(PIP) install -r lambda_reqs/load_requirements.txt --target layer/load_layer/python)
+	# $(call execute_in_env, $(PIP) install -r lambda_reqs/transform_requirements.txt --target layer/transform_layer/python)
+	# $(call execute_in_env, $(PIP) install -r lambda_reqs/load_requirements.txt --target layer/load_layer/python)
 
 ################################################################################################################
 # Set Up

@@ -28,12 +28,10 @@ def s3(aws_credentials):
         )
         yield s3
 
+
 class DummyContext:  # Dummy context class used for testing
     pass
 
-
-event = {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}
-context = DummyContext()
 
 class TestTransform:
 
