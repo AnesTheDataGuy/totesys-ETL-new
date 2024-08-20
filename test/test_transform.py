@@ -1,7 +1,6 @@
-import pytest, boto3, os, shutil
+import pytest, boto3, os
 from moto import mock_aws
 from src.lambda_functions.transform import lambda_handler as transform
-from datetime import datetime as dt
 
 
 @pytest.fixture(scope="function")
@@ -36,113 +35,116 @@ class DummyContext:  # Dummy context class used for testing
 event = {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}
 context = DummyContext()
 
+class TestTransform:
 
-def test_transform_lands_data_in_processed_data_bucket(s3):
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/sales_order.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/design.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/currency.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/staff.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/counterparty.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/address.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/department.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/purchase_order.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/payment_type.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/payment.csv'
-    )
-    s3.put_object(
-        Body="""test,test2,test3
-                1,2,3
-                5,6,7
-                8,9,10""",
-        Bucket='totesys-raw-data-000000',
-        Key='/history/YYYY/MM/DD/HH:MM:SS/transaction.csv'
-    )
+    @pytest.mark.it("parquet data lands in the processed bucket")
+    def test_transform_lands_data_in_processed_data_bucket(self, s3):
 
-    expected_pq = {'/history/YYYY/MM/DD/HH:MM:SS/address.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/design.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/currency.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/staff.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/counterparty.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/sales_order.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/department.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/purchase_order.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/payment_type.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/payment.parquet': 0,
-                   '/history/YYYY/MM/DD/HH:MM:SS/transaction.parquet': 0}
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/sales_order.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/design.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/currency.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/staff.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/counterparty.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/address.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/department.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/purchase_order.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/payment_type.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/payment.csv'
+        )
+        s3.put_object(
+            Body="""test,test2,test3
+                    1,2,3
+                    5,6,7
+                    8,9,10""",
+            Bucket='totesys-raw-data-000000',
+            Key='/history/YYYY/MM/DD/HH:MM:SS/transaction.csv'
+        )
 
-    res = transform(event, context)
-    proc_data_bucket_objects = s3.list_objects(Bucket="totesys-processed-data-000000")['Contents']
+        expected_pq = {'/history/YYYY/MM/DD/HH:MM:SS//address.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//design.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//currency.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//staff.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//counterparty.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//sales_order.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//department.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//purchase_order.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//payment_type.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//payment.parquet': 0,
+                    '/history/YYYY/MM/DD/HH:MM:SS//transaction.parquet': 0}
 
-    for parquet in proc_data_bucket_objects:
-        assert parquet['Key'] in expected_pq
-    
-    assert res == {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}
+        res = transform(event, context)
+        proc_data_bucket_objects = s3.list_objects(Bucket="totesys-processed-data-000000")['Contents']
+
+        for parquet in proc_data_bucket_objects:
+            assert parquet['Key'] in expected_pq
+        
+        assert res == {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}
