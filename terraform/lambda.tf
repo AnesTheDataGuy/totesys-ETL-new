@@ -48,18 +48,6 @@ resource "aws_s3_object" "transform_lambda_zip" {
   key    = "transform.zip"
 }
 
-resource "aws_lambda_function" "test_lambda" { #Provision the lambda
-  s3_bucket        = aws_s3_bucket.lambda_bucket.id
-  s3_key           = aws_s3_object.test_lambda_zip.key
-  function_name    = "test_lambda"
-  source_code_hash = data.archive_file.test_lambda.output_base64sha256
-  role             = aws_iam_role.lambda_role.arn
-  layers           = [aws_lambda_layer_version.lambda_layer.arn]
-  runtime          = var.python_runtime
-  handler          = "test_lambda.lambda_handler"
-  timeout          = 120
-}
-
 resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
   s3_bucket        = aws_s3_bucket.lambda_bucket.id
   s3_key           = aws_s3_object.extract_lambda_zip.key
