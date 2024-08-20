@@ -64,7 +64,7 @@ bucket:
                     design_source/
 """
 
-all_data_file_path = "/source/"
+all_data_file_path = "/original/"
 
 
 def create_time_prefix_for_file():
