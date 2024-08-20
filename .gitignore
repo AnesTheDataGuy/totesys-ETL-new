@@ -9,3 +9,6 @@ terraform/.terraform.lock.hcl
 data/*
 .coverage
 *.csv
+data/table_data/*
+.terraform.lock
+

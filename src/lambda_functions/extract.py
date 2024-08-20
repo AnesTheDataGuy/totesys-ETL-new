@@ -68,7 +68,7 @@ bucket:
 
 def lambda_handler(event, context):
     """
-    Wrapper function that allows us to run our utils functions together, and allows 
+    Wrapper function that allows us to run our utils functions together, and allows
     us to invoke them all in AWS
     """
     db_credentials = get_secret()
@@ -78,11 +78,13 @@ def lambda_handler(event, context):
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
     print(bucket_content)
 
+
     if bucket_content.get("Contents"):
         bucket_files = [dict_["Key"] for dict_ in bucket_content["Contents"]]
     else:
         bucket_files = []
     pprint(f"\n <<<{bucket_files}: ")
+
 
     try:
         conn = connect_to_db(db_credentials)
@@ -102,7 +104,6 @@ def lambda_handler(event, context):
                 create_and_upload_to_bucket(
                     file_data, s3_client, raw_data_bucket, data_table_name, True
                 )
-                print("\n _ORIGINAL CSV FILES NOT FOUND")
             else:
                 print("\n _ORIGINAL CSV FILES FOUND")
                 create_and_upload_to_bucket(
@@ -127,6 +128,7 @@ def lambda_handler(event, context):
                 os.remove(f'/tmp/{data_table_name}.csv')
                 os.remove(f'/tmp/{data_table_name}_new.csv')
                 # print(f"\n FILE BUFFER: {file_buffer}")
+
                 # file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
@@ -138,5 +140,3 @@ def lambda_handler(event, context):
     finally:
         if "conn" in locals():
             conn.close()
-
-    return {"time_prefix": time_prefix}

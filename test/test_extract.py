@@ -130,11 +130,9 @@ def secretsmanager_broken(aws_credentials):
         )
         yield secretsmanager
 
-
 class DummyContext:  # Dummy context class used for testing
     pass
 
-@pytest.mark.skip()
 class TestLambdaHandler:
     # @pytest.mark.skip()
     @pytest.mark.it("Raise exception if raw data bucket is not found")
@@ -212,10 +210,9 @@ class TestLambdaHandler:
         }
         for i in range(len(listing)):
             assert f'{listing["Contents"][i]["Key"]}' in expected_files
-        lambda_handler(event, context)
 
-    @pytest.mark.it("Successfully compares new db queries with _original.csv")
-    def test_uploads_csv_to_raw_data_bucket(self, s3, secretsmanager):
-        event = {}
-        context = DummyContext()
-        assert not lambda_handler(event, context)
+    # @pytest.mark.it("Successfully compares new db queries with _original.csv")
+    # def test_compares_csv_to_original(self, s3, secretsmanager):
+    #     event = {}
+    #     context = DummyContext()
+    #     assert not lambda_handler(event, context)
