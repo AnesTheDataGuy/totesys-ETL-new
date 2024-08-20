@@ -65,7 +65,7 @@ def convert_csv_to_parquet(csv):
             Bucket=raw_data_bucket, Key=f"{csv}"
         )  # change f string for when we finalise extract structure
         csv_data = res["Body"].read().decode("utf-8")
-    except ClientError as e:
+    except ClientError:
         return "csv file not found"
 
     data_buffer_csv = StringIO(csv_data)

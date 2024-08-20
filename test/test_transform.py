@@ -1,4 +1,6 @@
-import pytest, boto3, os
+import pytest
+import boto3
+import os
 from moto import mock_aws
 from src.lambda_functions.transform import lambda_handler as transform
 
@@ -32,8 +34,10 @@ def s3(aws_credentials):
 class DummyContext:  # Dummy context class used for testing
     pass
 
+
 event = {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}
 context = DummyContext()
+
 
 class TestTransform:
 
@@ -130,21 +134,21 @@ class TestTransform:
         )
 
         expected_pq = {'/history/YYYY/MM/DD/HH:MM:SS//address.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//design.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//currency.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//staff.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//counterparty.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//sales_order.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//department.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//purchase_order.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//payment_type.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//payment.parquet': 0,
-                    '/history/YYYY/MM/DD/HH:MM:SS//transaction.parquet': 0}
+                       '/history/YYYY/MM/DD/HH:MM:SS//design.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//currency.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//staff.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//counterparty.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//sales_order.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//department.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//purchase_order.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//payment_type.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//payment.parquet': 0,
+                       '/history/YYYY/MM/DD/HH:MM:SS//transaction.parquet': 0}
 
         res = transform(event, context)
         proc_data_bucket_objects = s3.list_objects(Bucket="totesys-processed-data-000000")['Contents']
 
         for parquet in proc_data_bucket_objects:
             assert parquet['Key'] in expected_pq
-        
+
         assert res == {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}

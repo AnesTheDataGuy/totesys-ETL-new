@@ -46,8 +46,6 @@ resource "aws_s3_object" "load_lambda_zip" {
   metadata = {
     last_updated = timestamp()
   }
-
-
 }
 
 resource "aws_s3_object" "transform_lambda_zip" {

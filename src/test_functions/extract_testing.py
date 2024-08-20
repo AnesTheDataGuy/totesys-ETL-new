@@ -1,4 +1,7 @@
-import boto3, logging, os, csv
+import boto3
+import logging
+import os
+import csv
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
@@ -83,7 +86,7 @@ def lambda_handler(event, context):
             file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
             try:
-                response = s3_client.put_object(
+                s3_client.put_object(
                     Body=file_to_save,
                     Bucket=raw_data_bucket,
                     Key=f"{time_prefix}{data_table}.csv",
@@ -91,13 +94,12 @@ def lambda_handler(event, context):
 
             except ClientError as e:
                 logging.error(e)
-                return f"Failed to upload file"
+                return "Failed to upload file"
 
             with open(
                 f"{save_file_path_prefix}{data_table}.csv", "w", newline=""
             ) as csvfile:
                 csvwriter = csv.writer(csvfile)
-                csvwriter.writerow(col_list)
                 csvwriter.writerows(data_rows)
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
