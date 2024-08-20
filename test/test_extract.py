@@ -4,7 +4,7 @@ import os
 import shutil
 import json
 from moto import mock_aws
-from src.lambda_functions.extract import lambda_handler, get_secret, compare_csvs
+from src.lambda_functions.extract import lambda_handler, get_secret
 from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
 import csv
