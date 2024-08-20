@@ -60,7 +60,7 @@ def s3(aws_credentials):
         )
         yield s3
 
-Class TestFindsDataBuckets:
+class TestFindsDataBuckets:
 
 
     def test_no_buckets_found(self, s3_no_buckets):
@@ -83,7 +83,7 @@ Class TestFindsDataBuckets:
         result = finds_data_buckets()
         assert result == ('totesys-raw-data-000000','totesys-processed-data-000000')
 
-Class TestConvertToParquet:
+class TestConvertToParquet:
 
     def test_csv_file_not_found(self, s3):
         result = convert_csv_to_parquet('test.csv')
