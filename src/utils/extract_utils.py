@@ -96,7 +96,7 @@ def connect_to_db(credentials):
     )
 
 
-def create_and_upload_to_bucket(data, client, bucket, filename):
+def create_and_upload_to_bucket(data, client, bucket, filename, original):
     """
     Converts a table from a database into a CSV file and uploads that CSV file to a 
     specified bucket, raising an exception if there's an error in uploading the file.
@@ -107,12 +107,18 @@ def create_and_upload_to_bucket(data, client, bucket, filename):
     file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
     try:
-        response = client.put_object(
-            Body=file_to_save,
-            Bucket=bucket,
-            Key=f"{all_data_file_path}{filename}/{filename}_original.csv",
-        )
-
+        if original:
+            response = client.put_object(
+                Body=file_to_save,
+                Bucket=bucket,
+                Key=f"{all_data_file_path}{filename}/{filename}_original.csv",
+            )
+        else:
+            response = client.put_object(
+                Body=file_to_save,
+                Bucket=bucket,
+                Key=f"{all_data_file_path}{filename}/{filename}_new.csv",
+            )
     except ClientError as e:
         logging.error(e)
         raise Exception("Failed to upload file")
@@ -143,14 +149,14 @@ def compare_csvs(csv1, csv2):
         command = f"echo $(diff {csv1} {csv2})"
         differences = subprocess.run(command, capture_output=True, shell=True)
         changes_to_table = re.findall(regex, differences.stdout.decode())
-        filepath = f"{csv1}_differences_{create_time_prefix_for_file()}.csv"
-        with open(filepath, "w", newline='') as f:
+        filepath = f"differences_{create_time_prefix_for_file()}.csv"
+        with open(f"/tmp/{filepath}", "w", newline='') as f:
             csvwriter = csv.writer(f)
             csvwriter.writerow(header)
             for change in changes_to_table:
                 change_list = [k for k in list(change) if not '' == k]
                 csvwriter.writerow(change_list[1].split(','))
-        
+
         if changes_to_table == '\n':
             logging.info("No changes in table found")
         else:

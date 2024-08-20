@@ -4,11 +4,13 @@ import csv
 import json
 import re
 import subprocess
+import os
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
 from io import StringIO
 from src.utils.extract_utils import *
+from pprint import pprint
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -80,11 +82,12 @@ def lambda_handler(event, context):
         bucket_files = [dict_["Key"] for dict_ in bucket_content["Contents"]]
     else:
         bucket_files = []
-    print(f"\n <<<bucket_files: ")
+    pprint(f"\n <<<{bucket_files}: ")
 
     try:
         conn = connect_to_db(db_credentials)
         for data_table_name in data_tables:
+            print()
             query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{data_table_name}';"
             column_names = conn.run(query)
             header = []
@@ -95,16 +98,35 @@ def lambda_handler(event, context):
             data_rows = conn.run(query)
             file_data = [header] + data_rows
 
-            if not f"{data_table_name}_original.csv" in bucket_files:
+            if not f"/source/{data_table_name}/{data_table_name}_original.csv" in bucket_files:
                 create_and_upload_to_bucket(
-                    file_data, s3_client, raw_data_bucket, data_table_name
+                    file_data, s3_client, raw_data_bucket, data_table_name, True
                 )
                 print("\n _ORIGINAL CSV FILES NOT FOUND")
             else:
                 print("\n _ORIGINAL CSV FILES FOUND")
-                file_buffer = StringIO()
-                csv.writer(file_buffer).writerows(file_data)
-                print(f"\n FILE BUFFER: {file_buffer}")
+                create_and_upload_to_bucket(
+                    file_data, s3_client, raw_data_bucket, data_table_name, False
+                )
+                # file_buffer = StringIO()
+                # csv.writer(file_buffer).writerows(file_data)
+                
+                s3_client.download_file(Bucket=raw_data_bucket, 
+                Key=f'/source/{data_table_name}/{data_table_name}_original.csv',
+                Filename=f'/tmp/{data_table_name}.csv')
+
+                s3_client.download_file(Bucket=raw_data_bucket, 
+                Key=f'/source/{data_table_name}/{data_table_name}_new.csv',
+                Filename=f'/tmp/{data_table_name}_new.csv')
+                
+                changes_csv = compare_csvs(f'/source/{data_table_name}/{data_table_name}_original.csv', f'/source/{data_table_name}/{data_table_name}_new.csv')
+                
+                s3_client.upload_file(Bucket=raw_data_bucket, Filename=f"/tmp/{changes_csv}", 
+                Key=f'/history/{data_table_name}/{changes_csv}')
+                
+                os.remove(f'/tmp/{data_table_name}.csv')
+                os.remove(f'/tmp/{data_table_name}_new.csv')
+                # print(f"\n FILE BUFFER: {file_buffer}")
                 # file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
