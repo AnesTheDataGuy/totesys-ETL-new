@@ -37,3 +37,23 @@ variable "python_runtime" {
   type    = string
   default = "python3.12"
 }
+
+variable "UN" {
+  type = string
+}
+
+variable "PW" {
+  type = string
+}
+
+variable "DB" {
+  type = string
+}
+
+variable "HT" {
+  type = string
+}
+variable "PT" {
+  type = string
+}
+
