@@ -128,7 +128,7 @@ def connect_to_bucket(client):
 
 def connect_to_db(credentials):
     """
-    Uses the secret obtained in the get_secret method to establish a 
+    Uses the secret obtained in the get_secret method to establish a
     connection to the database
     """
     return Connection(
@@ -142,7 +142,7 @@ def connect_to_db(credentials):
 
 def create_and_upload_to_bucket(data, client, bucket, filename):
     """
-    Converts a table from a database into a CSV file and uploads that CSV file to a 
+    Converts a table from a database into a CSV file and uploads that CSV file to a
     specified bucket, raising an exception if there's an error in uploading the file.
     The data argument is a list of lists.
     """
@@ -161,9 +161,10 @@ def create_and_upload_to_bucket(data, client, bucket, filename):
         logging.error(e)
         raise Exception("Failed to upload file")
 
+
 def compare_csvs(csv1, csv2):
     """
-    Takes two csvs and compares the differences between them, returning None if no 
+    Takes two csvs and compares the differences between them, returning None if no
     differences found.
 
     Args:
@@ -174,13 +175,16 @@ def compare_csvs(csv1, csv2):
     csv file containing all changes to database (if csv1 and csv2 are not equal)
     None (if csv1 and csv2 are equal)
     """
-    regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
-    x = re.findall(regex, subprocess.run(("echo $(diff data/test_csv_1.csv data/test_csv_2.csv")))
+    regex = r"(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))"
+    x = re.findall(
+        regex, subprocess.run(("echo $(diff data/test_csv_1.csv data/test_csv_2.csv"))
+    )
     return x
+
 
 def lambda_handler(event, context):
     """
-    Wrapper function that allows us to run our utils functions together, and allows 
+    Wrapper function that allows us to run our utils functions together, and allows
     us to invoke them all in AWS
     """
     db_credentials = get_secret()

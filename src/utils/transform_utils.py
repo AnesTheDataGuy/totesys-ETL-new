@@ -4,6 +4,7 @@ from io import StringIO, BytesIO
 import pandas as pd
 from botocore.exceptions import ClientError
 
+
 def finds_data_buckets():
     """
     This function finds the raw data and processed data buckets on AWS S3.
@@ -55,7 +56,7 @@ def convert_csv_to_parquet(csv):
     """
     if csv[-4:] != ".csv":
         return f"{csv} is not a .csv file."
-    
+
     s3_client = boto3.client("s3")
 
     raw_data_bucket, _ = finds_data_buckets()
