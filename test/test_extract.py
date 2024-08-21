@@ -1,13 +1,11 @@
 import pytest
 import boto3
 import os
-import shutil
 import json
 from moto import mock_aws
-from src.lambda_functions.extract import lambda_handler, get_secret
+from src.lambda_functions.extract import lambda_handler
 from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
-import csv
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
@@ -130,10 +128,13 @@ def secretsmanager_broken(aws_credentials):
         )
         yield secretsmanager
 
+
 class DummyContext:  # Dummy context class used for testing
     pass
 
+
 class TestLambdaHandler:
+
     # @pytest.mark.skip()
     @pytest.mark.it("Raise exception if raw data bucket is not found")
     def test_bucket_does_not_exist(self, s3_no_buckets, secretsmanager):
@@ -159,31 +160,31 @@ class TestLambdaHandler:
             lambda_handler(event, context)
 
     # The test below checks files are written locally but we no longer care about it being written locally so it's skipped
-    @pytest.mark.skip()
-    @pytest.mark.it(
-        "script succesfully writes csv files containing database data to local folder"
-    )
-    def test_succesfully_save_datatables_to_csv(self, s3, secretsmanager):
-        saved_csv_path = data_dir
-        expected_files = {
-            "sales_order.csv": 0,
-            "design.csv": 0,
-            "currency.csv": 0,
-            "staff.csv": 0,
-            "counterparty.csv": 0,
-            "address.csv": 0,
-            "department.csv": 0,
-            "purchase_order.csv": 0,
-            "payment_type.csv": 0,
-            "payment.csv": 0,
-            "transaction.csv": 0,
-        }
-        event = {}
-        context = DummyContext()
-        lambda_handler(event, context)
-        folder_content = os.listdir(saved_csv_path)
-        for file in expected_files:
-            assert file in folder_content
+    # @pytest.mark.skip()
+    # @pytest.mark.it(
+    #     "script succesfully writes csv files containing database data to local folder"
+    # )
+    # def test_succesfully_save_datatables_to_csv(self, s3, secretsmanager):
+    #     saved_csv_path = data_dir
+    #     expected_files = {
+    #         "sales_order.csv": 0,
+    #         "design.csv": 0,
+    #         "currency.csv": 0,
+    #         "staff.csv": 0,
+    #         "counterparty.csv": 0,
+    #         "address.csv": 0,
+    #         "department.csv": 0,
+    #         "purchase_order.csv": 0,
+    #         "payment_type.csv": 0,
+    #         "payment.csv": 0,
+    #         "transaction.csv": 0,
+    #     }
+    #     event = {}
+    #     context = DummyContext()
+    #     lambda_handler(event, context)
+    #     folder_content = os.listdir(saved_csv_path)
+    #     for file in expected_files:
+    #         assert file in folder_content
 
     # @pytest.mark.it(
     #     "Successfully uploads original files to s3 bucket when bucket is empty"

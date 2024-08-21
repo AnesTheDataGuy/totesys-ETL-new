@@ -2,9 +2,8 @@ import pytest
 import boto3
 import os
 import json
-import csv
 from moto import mock_aws
-from src.utils.extract_utils import *
+from src.utils.extract_utils import get_secret
 from dotenv import load_dotenv, find_dotenv
 
 
@@ -17,6 +16,7 @@ PG_DATABASE = os.getenv("PG_DATABASE")
 PG_HOST = os.getenv("PG_HOST")
 PG_PORT = os.getenv("PG_PORT")
 
+
 @pytest.fixture(scope="function")
 def aws_credentials():
     """Mocked AWS Credentials for S3 bucket."""
@@ -25,6 +25,7 @@ def aws_credentials():
     os.environ["AWS_SECURITY_TOKEN"] = "test"
     os.environ["AWS_SESSION_TOKEN"] = "test"
     os.environ["AWS_DEFAULT_REGION"] = "eu-west-2"
+
 
 @pytest.fixture(scope="function")
 def s3(aws_credentials):
@@ -35,26 +36,29 @@ def s3(aws_credentials):
             Bucket="totesys-raw-data-000000",
             CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
         )
-        s3.put_object(Body="""
-        1,5,3,7,2
-        2,1,1,1,1
-        3,9,3,4,2
-
-        """,
-        Bucket="totesys-raw-data-000000", Key='test_csv_1.csv'
+        s3.put_object(
+            Body="""
+                1,5,3,7,2
+                2,1,1,1,1
+                3,9,3,4,2
+                """,
+            Bucket="totesys-raw-data-000000",
+            Key='test_csv_1.csv'
         )
-        
-        s3.put_object(Body="""
-        1,k,5,77,5
-        2,1,1,1,1
-        3,2,2,2,2
-        4,1,1,1,1
-        5,,3,7,4
 
-        """,
-        Bucket="totesys-raw-data-000000", Key='test_csv_2.csv'
+        s3.put_object(
+            Body="""
+                1,k,5,77,5
+                2,1,1,1,1
+                3,2,2,2,2
+                4,1,1,1,1
+                5,,3,7,4
+                """,
+            Bucket="totesys-raw-data-000000",
+            Key='test_csv_2.csv'
         )
         yield s3
+
 
 @pytest.fixture(scope="function")
 def secretsmanager(aws_credentials):
@@ -89,6 +93,7 @@ def secretsmanager_broken(aws_credentials):
         )
         yield secretsmanager
 
+
 class TestGetSecret:
 
     @pytest.mark.it("get secret returns the correct credentials data")
@@ -113,7 +118,7 @@ class TestGetSecret:
 #         result = compare_csvs('test_csv_1.csv', 'test_csv_2.csv')
 #         csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
 #         assert len(csv_path_list) > 0
-        
+
 #     @pytest.mark.it(
 #             "Creates a csv file containing changes between the two csvs"
 #             )
@@ -122,8 +127,8 @@ class TestGetSecret:
 #         with open(csv_path_list[0], 'r') as reader:
 #             next(reader)
 #             differences = csv.reader(reader)
-#             assert list(differences) == [['1','k','5','77','5'], 
-#                                         ['3', '2', '2', '2', '2'], 
+#             assert list(differences) == [['1','k','5','77','5'],
+#                                         ['3', '2', '2', '2', '2'],
 #                                         ['4', '1', '1', '1', '1'],
 #                                         ['5', '', '3', '7', '4']]
 
