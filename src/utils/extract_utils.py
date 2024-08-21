@@ -146,9 +146,14 @@ def compare_csvs(csv1, csv2):
                 header.append(column[0])
 
         regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
-        command = f"echo $(diff {csv1} {csv2})"
-        differences = subprocess.run(command, capture_output=True, shell=True)
-        changes_to_table = re.findall(regex, differences.stdout.decode())
+
+        '''
+        command = f"echo $(diff {csv1} {csv2})" 
+        This command had to be broken down due to security risks of using shell commands
+        '''
+        diff_output = subprocess.run(["diff", csv1, csv2], capture_output=True, text=True).stdout
+        differences = subprocess.run(["echo", diff_output], capture_output=True, text=True)
+        changes_to_table = re.findall(regex, differences.stdout)
         filepath = f"differences_{create_time_prefix_for_file()}.csv"
         with open(f"/tmp/{filepath}", "w", newline='') as f:
             csvwriter = csv.writer(f)
