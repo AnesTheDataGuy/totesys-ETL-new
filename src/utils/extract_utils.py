@@ -135,19 +135,19 @@ def create_and_upload_to_bucket(data, client, bucket, filename, original):
             response = client.put_object(
                 Body=file_to_save,
                 Bucket=bucket,
-                Key=f"{SOURCE_PATH}{filename}/{filename}{SOURCE_FILE_SUFFIX}.csv",
+                Key=f"{SOURCE_PATH}{filename}{SOURCE_FILE_SUFFIX}.csv",
             )
         else:
             response = client.put_object(
                 Body=file_to_save,
                 Bucket=bucket,
-                Key=f"{SOURCE_PATH}{filename}/{filename}_new.csv",
+                Key=f"{SOURCE_PATH}{filename}_new.csv",
             )
     except ClientError as e:
         logging.error(e)
         raise Exception("Failed to upload file")
 
-def compare_csvs(csv1, csv2):
+def compare_csvs(dt_name):
     """
     Takes two csvs and compares the differences between them, returning an 
     empty csv if no differences found.
@@ -160,18 +160,34 @@ def compare_csvs(csv1, csv2):
     csv file containing all changes to database (if csv1 and csv2 are not equal)
     None (if csv1 and csv2 are equal)
     """
+    #print(f"\n ><><><>< {os.listdir('/tmp')}")
+    csv_prev = f'/tmp/{dt_name}.csv'
+    csv_new = f'/tmp/{dt_name}_new.csv'
 
-    regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
-    command = f"echo $(diff {csv1} {csv2})"
+    # read the header from the CSV file
+    with open(csv_prev,"r", newline='') as csv_file: #, newline=''
+        csv_reader = csv.reader(csv_file, delimiter = ',')
+        header = []
+        for row in csv_reader:
+            header.append(row)
+            break
+    
+    
+    regex = r'>\s*(([A-Za-z0-9\.@:\-_\s,:]+))+'
+    #regex = r'(> ([A-Za-z,0-9.@:-_/s]+))|(\\ ([A-Za-z,0-9.@:-_/s]+))'
+    command = f"echo $(diff {csv_prev} {csv_new})"
     differences = subprocess.run(command, capture_output=True, shell=True)
+    print(f"\n differences: {differences}")
     changes_to_table = re.findall(regex, differences.stdout.decode())
-    filepath = f"differences_{create_time_based_path()}.csv"
+    print(f"\nCHANGES TO TABLE: {changes_to_table}")
+    filepath = f"{dt_name}_differences.csv"
     with open(f"/tmp/{filepath}", "w", newline='') as f:
         csvwriter = csv.writer(f)
-        csvwriter.writerow(header)
+        csvwriter.writerow(header[0])
         for change in changes_to_table:
             change_list = [k for k in list(change) if not '' == k]
-            csvwriter.writerow(change_list[1].split(','))
+            print(f"\nchange_list: {change_list}")
+            csvwriter.writerow(change_list[0].split(','))
 
     if changes_to_table == '\n':
         logging.info("No changes in table found")

@@ -35,25 +35,39 @@ def s3(aws_credentials):
             Bucket="totesys-raw-data-000000",
             CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
         )
-        s3.put_object(Body="""
-        1,5,3,7,2
-        2,1,1,1,1
-        3,9,3,4,2
-
+        s3.put_object(Body=
+        """staff_id,first_name,last_name,department_id,email_address,created_at,last_updated
+        1,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        2,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        3,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        4,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        5,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        6,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        7,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        8,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         """,
-        Bucket="totesys-raw-data-000000", Key='test_csv_1.csv'
+        Bucket="totesys-raw-data-000000",
+        Key='test_csv.csv'
         )
         
-        s3.put_object(Body="""
-        1,k,5,77,5
-        2,1,1,1,1
-        3,2,2,2,2
-        4,1,1,1,1
-        5,,3,7,4
-
-        """,
-        Bucket="totesys-raw-data-000000", Key='test_csv_2.csv'
+        s3.put_object(Body=
+        """staff_id,first_name,last_name,department_id,email_address,created_at,last_updated
+        1,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        2,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        3,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        4,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        5,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        6,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        7,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        8,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
+        Bucket="totesys-raw-data-000000",
+        Key='test_csv_new.csv'
         )
+        
         yield s3
 
 @pytest.fixture(scope="function")
@@ -108,24 +122,36 @@ class TestCompareCsvs:
 
     @pytest.mark.it("Creates a csv file")
     def test_file_exists(self, s3, secretsmanager):
-        s3.download_file("totesys-raw-data-000000", 'test_csv_1.csv', 'test_csv_1.csv')
-        s3.download_file("totesys-raw-data-000000", 'test_csv_2.csv', 'test_csv_2.csv')
-        result = compare_csvs('test_csv_1.csv', 'test_csv_2.csv')
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
-        assert len(csv_path_list) > 0
+        s3.download_file("totesys-raw-data-000000", 'test_csv.csv', '/tmp/test_csv.csv')
+        s3.download_file("totesys-raw-data-000000", 'test_csv_new.csv', '/tmp/test_csv_new.csv')  
         
+        result = compare_csvs('test_csv')
+        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_differences')]
+        
+        assert len(csv_path_list) > 0
+    
+    
     @pytest.mark.it(
             "Creates a csv file containing changes between the two csvs"
             )
     def test_change_in_database(self):
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
-        with open(csv_path_list[0], 'r') as reader:
+        print(f"\n ><><><>< {os.listdir('/tmp')}")
+        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_differences')]
+        print(csv_path_list)
+        with open(f'/tmp/{csv_path_list[0]}', 'r') as reader:
             next(reader)
             differences = csv.reader(reader)
-            assert list(differences) == [['1','k','5','77','5'], 
-                                        ['3', '2', '2', '2', '2'], 
-                                        ['4', '1', '1', '1', '1'],
-                                        ['5', '', '3', '7', '4']]
+
+            assert list(differences) == [
+                ['10', 'Steve', 'Imposter', '1', 'steve_imposter@nc.com',
+                '2023-08-12 10:30:00', '2023-08-12 10:30:00 '
+                ],
+                ['11', 'Stevie', 'Impostah', '1', 'stevie_impostah@nc.com',
+                 '2024-08-12 10:30:00', '2024-08-12 10:30:00 '
+                ]
+            ]
+            
+    """
 
     @pytest.mark.it("Writes empty csv file when both csvs are the same")
     def test_no_change_in_database(self, secretsmanager):
@@ -135,3 +161,4 @@ class TestCompareCsvs:
             next(reader)
             differences = csv.reader(reader)
             assert list(differences) == []
+"""

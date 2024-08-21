@@ -100,7 +100,7 @@ def lambda_handler(event, context):
             file_data = query_db(data_table_name,conn)
 
             #create _original file if doesn't exist, or create _new file if it does
-            if not f"/source/{data_table_name}/{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files:
+            if not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files:
                 create_and_upload_to_bucket(
                     file_data, s3_client, raw_data_bucket, data_table_name, True
                 )
@@ -109,23 +109,40 @@ def lambda_handler(event, context):
                     file_data, s3_client, raw_data_bucket, data_table_name, False
                 )
 
-                #save a copy of _previous to /tmp
+                #save a copy of _original to /tmp, where it can be manipulated by the lambda function
                 s3_client.download_file(Bucket=raw_data_bucket, 
-                Key=f'/source/{data_table_name}/{data_table_name}{SOURCE_FILE_SUFFIX}.csv',
+                Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv',
                 Filename=f'/tmp/{data_table_name}.csv')
 
-                #save a copy of _new to /tmp
+                #save a copy of _new to /tmp, where it can be manipulated by the lambda function
                 s3_client.download_file(Bucket=raw_data_bucket, 
-                Key=f'/source/{data_table_name}/{data_table_name}_new.csv',
+                Key=f'{SOURCE_PATH}{data_table_name}_new.csv',
                 Filename=f'/tmp/{data_table_name}_new.csv')
                 
                 #is it comparing the new datatable with the very original one each time?
-                changes_csv = compare_csvs(f'/source/{data_table_name}/{data_table_name}{SOURCE_FILE_SUFFIX}.csv', f'/source/{data_table_name}/{data_table_name}_new.csv')
+                """
+                changes_csv = compare_csvs(
+                    f'{SOURCE_PATH}{data_table_name}/{data_table_name}{SOURCE_FILE_SUFFIX}.csv',
+                    f'{SOURCE_PATH}{data_table_name}/{data_table_name}_new.csv'
+                    )
+                """
+                changes_csv = compare_csvs(data_table_name)
 
                 #save the _differences file to history   
-                s3_client.upload_file(Bucket=raw_data_bucket, Filename=f"/tmp/{changes_csv}", 
-                Key=f'/history/{data_table_name}/{changes_csv}')
+                s3_client.upload_file(Bucket=raw_data_bucket,
+                                      Filename=f"/tmp/{changes_csv}",
+                                      Key=f'{HISTORY_PATH}{create_time_based_path()}{changes_csv}'              
+                                      )
                 
+                #replace /source/*_original with /source/*_new
+                s3_client.upload_file(Bucket=raw_data_bucket,
+                                      Filename=f'{SOURCE_PATH}{data_table_name}_new.csv',
+                                      Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}'              
+                                      )
+                #delete /source/*_new
+                s3_client.delete_object(Bucket=raw_data_bucket,
+                                     Key=f'{SOURCE_PATH}{data_table_name}_new.csv'
+                                     )
                 #removing the temporary files
                 os.remove(f'/tmp/{data_table_name}.csv')
                 os.remove(f'/tmp/{data_table_name}_new.csv')
