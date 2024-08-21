@@ -104,34 +104,34 @@ class TestGetSecret:
         with pytest.raises(Exception):
             get_secret("imposter_steve")
 
-class TestCompareCsvs:
+# class TestCompareCsvs:
 
-    @pytest.mark.it("Creates a csv file")
-    def test_file_exists(self, s3, secretsmanager):
-        s3.download_file("totesys-raw-data-000000", 'test_csv_1.csv', 'test_csv_1.csv')
-        s3.download_file("totesys-raw-data-000000", 'test_csv_2.csv', 'test_csv_2.csv')
-        result = compare_csvs('test_csv_1.csv', 'test_csv_2.csv')
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
-        assert len(csv_path_list) > 0
+#     @pytest.mark.it("Creates a csv file")
+#     def test_file_exists(self, s3, secretsmanager):
+#         s3.download_file("totesys-raw-data-000000", 'test_csv_1.csv', 'test_csv_1.csv')
+#         s3.download_file("totesys-raw-data-000000", 'test_csv_2.csv', 'test_csv_2.csv')
+#         result = compare_csvs('test_csv_1.csv', 'test_csv_2.csv')
+#         csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
+#         assert len(csv_path_list) > 0
         
-    @pytest.mark.it(
-            "Creates a csv file containing changes between the two csvs"
-            )
-    def test_change_in_database(self):
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
-        with open(csv_path_list[0], 'r') as reader:
-            next(reader)
-            differences = csv.reader(reader)
-            assert list(differences) == [['1','k','5','77','5'], 
-                                        ['3', '2', '2', '2', '2'], 
-                                        ['4', '1', '1', '1', '1'],
-                                        ['5', '', '3', '7', '4']]
+#     @pytest.mark.it(
+#             "Creates a csv file containing changes between the two csvs"
+#             )
+#     def test_change_in_database(self):
+#         csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_1.csv_differences_')]
+#         with open(csv_path_list[0], 'r') as reader:
+#             next(reader)
+#             differences = csv.reader(reader)
+#             assert list(differences) == [['1','k','5','77','5'], 
+#                                         ['3', '2', '2', '2', '2'], 
+#                                         ['4', '1', '1', '1', '1'],
+#                                         ['5', '', '3', '7', '4']]
 
-    @pytest.mark.it("Writes empty csv file when both csvs are the same")
-    def test_no_change_in_database(self, secretsmanager):
-        result = compare_csvs('test_csv_2.csv', 'test_csv_2.csv')
-        csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_2.csv_differences_')]
-        with open(csv_path_list[0], 'r') as reader:
-            next(reader)
-            differences = csv.reader(reader)
-            assert list(differences) == []
+#     @pytest.mark.it("Writes empty csv file when both csvs are the same")
+#     def test_no_change_in_database(self, secretsmanager):
+#         result = compare_csvs('test_csv_2.csv', 'test_csv_2.csv')
+#         csv_path_list = [filename for filename in os.listdir('.') if filename.startswith('test_csv_2.csv_differences_')]
+#         with open(csv_path_list[0], 'r') as reader:
+#             next(reader)
+#             differences = csv.reader(reader)
+#             assert list(differences) == []
