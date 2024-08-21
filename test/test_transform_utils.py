@@ -64,7 +64,6 @@ def s3(aws_credentials):
         )
         yield s3
 
-
 class TestFindsDataBuckets:
     @pytest.mark.it("No buckets found with correct error message")
     def test_no_buckets_found(self, s3_no_buckets):
@@ -119,3 +118,8 @@ class TestConvertCsvToParquet:
         )
         result = convert_csv_to_parquet('test.txt')
         assert result == "test.txt is not a .csv file."
+
+    @pytest.mark.it("correct message when csv file is not found in bucket")
+    def test_returns_appropriate_message_file_is_not_found_in_bucket(self,s3):
+        result = convert_csv_to_parquet('dummy.csv')
+        assert result == "csv file not found"
