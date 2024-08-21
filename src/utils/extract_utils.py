@@ -148,7 +148,7 @@ def compare_csvs(csv1, csv2):
         regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
 
         '''
-        command = f"echo $(diff {csv1} {csv2})" 
+        command = f"echo $(diff {csv1} {csv2})"
         This command had to be broken down due to security risks of using shell commands
         '''
         diff_output = subprocess.run(["diff", csv1, csv2], capture_output=True, text=True).stdout
