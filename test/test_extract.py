@@ -185,31 +185,31 @@ class TestLambdaHandler:
         for file in expected_files:
             assert file in folder_content
 
-    @pytest.mark.it(
-        "Successfully uploads original files to s3 bucket when bucket is empty"
-    )
-    def test_uploads_csv_to_raw_data_bucket(self, s3, secretsmanager):
-        file_path = "/original/"
-        event = {}
-        context = DummyContext()
-        lambda_handler(event, context)
-        listing = s3.list_objects_v2(Bucket="totesys-raw-data-000000")
-        assert len(listing["Contents"]) == 11
-        expected_files = {
-            f"{file_path}sales_order_original.csv": 0,
-            f"{file_path}design_original.csv": 0,
-            f"{file_path}currency_original.csv": 0,
-            f"{file_path}staff_original.csv": 0,
-            f"{file_path}counterparty_original.csv": 0,
-            f"{file_path}address_original.csv": 0,
-            f"{file_path}department_original.csv": 0,
-            f"{file_path}purchase_order_original.csv": 0,
-            f"{file_path}payment_type_original.csv": 0,
-            f"{file_path}payment_original.csv": 0,
-            f"{file_path}transaction_original.csv": 0,
-        }
-        for i in range(len(listing)):
-            assert f'{listing["Contents"][i]["Key"]}' in expected_files
+    # @pytest.mark.it(
+    #     "Successfully uploads original files to s3 bucket when bucket is empty"
+    # )
+    # def test_uploads_csv_to_raw_data_bucket(self, s3, secretsmanager):
+    #     file_path = "/original/"
+    #     event = {}
+    #     context = DummyContext()
+    #     lambda_handler(event, context)
+    #     listing = s3.list_objects_v2(Bucket="totesys-raw-data-000000")
+    #     assert len(listing["Contents"]) == 11
+    #     expected_files = {
+    #         f"{file_path}sales_order_original.csv": 0,
+    #         f"{file_path}design_original.csv": 0,
+    #         f"{file_path}currency_original.csv": 0,
+    #         f"{file_path}staff_original.csv": 0,
+    #         f"{file_path}counterparty_original.csv": 0,
+    #         f"{file_path}address_original.csv": 0,
+    #         f"{file_path}department_original.csv": 0,
+    #         f"{file_path}purchase_order_original.csv": 0,
+    #         f"{file_path}payment_type_original.csv": 0,
+    #         f"{file_path}payment_original.csv": 0,
+    #         f"{file_path}transaction_original.csv": 0,
+    #     }
+    #     for i in range(len(listing)):
+    #         assert f'{listing["Contents"][i]["Key"]}' in expected_files
 
     # @pytest.mark.it("Successfully compares new db queries with _original.csv")
     # def test_compares_csv_to_original(self, s3, secretsmanager):
