@@ -25,6 +25,7 @@ data_tables = [
     "transaction",
 ]
 
+
 def create_time_prefix_for_file():
     """
     Retrieves the current time at which the lambda function is invoked for use in
@@ -44,6 +45,7 @@ def create_time_prefix_for_file():
     if len(str(second)) == 1:
         second = "0" + str(second)
     return f"{year}_{month}_{day}_{hour}:{minute}:{second}"
+
 
 def get_secret(secret_name="totesys_database_credentials"):
     """
@@ -69,6 +71,7 @@ def get_secret(secret_name="totesys_database_credentials"):
 
     return json.loads(get_secret_value_response["SecretString"])
 
+
 def connect_to_bucket(client):
     """
     Searches for a raw data bucket within an AWS account and returns bucket name if
@@ -84,7 +87,7 @@ def connect_to_bucket(client):
 
 def connect_to_db(credentials):
     """
-    Uses the secret obtained in the get_secret method to establish a 
+    Uses the secret obtained in the get_secret method to establish a
     connection to the database
     """
     return Connection(
@@ -98,7 +101,7 @@ def connect_to_db(credentials):
 
 def create_and_upload_to_bucket(data, client, bucket, filename, original):
     """
-    Converts a table from a database into a CSV file and uploads that CSV file to a 
+    Converts a table from a database into a CSV file and uploads that CSV file to a
     specified bucket, raising an exception if there's an error in uploading the file.
     The data argument is a list of lists.
     """
@@ -108,24 +111,21 @@ def create_and_upload_to_bucket(data, client, bucket, filename, original):
 
     try:
         if original:
-            response = client.put_object(
-                Body=file_to_save,
-                Bucket=bucket,
-                Key=f"{all_data_file_path}{filename}/{filename}_original.csv",
-            )
+            client.put_object(Body=file_to_save,
+                              Bucket=bucket,
+                              Key=f"{all_data_file_path}{filename}/{filename}_original.csv")
         else:
-            response = client.put_object(
-                Body=file_to_save,
-                Bucket=bucket,
-                Key=f"{all_data_file_path}{filename}/{filename}_new.csv",
-            )
+            client.put_object(Body=file_to_save,
+                              Bucket=bucket,
+                              Key=f"{all_data_file_path}{filename}/{filename}_new.csv")
     except ClientError as e:
         logging.error(e)
         raise Exception("Failed to upload file")
 
+
 def compare_csvs(csv1, csv2):
     """
-    Takes two csvs and compares the differences between them, returning an 
+    Takes two csvs and compares the differences between them, returning an
     empty csv if no differences found.
 
     Args:
@@ -144,7 +144,7 @@ def compare_csvs(csv1, csv2):
             header = []
             for column in column_names:
                 header.append(column[0])
-            
+
         regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
         command = f"echo $(diff {csv1} {csv2})"
         differences = subprocess.run(command, capture_output=True, shell=True)
