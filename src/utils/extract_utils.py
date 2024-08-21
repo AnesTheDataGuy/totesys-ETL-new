@@ -1,5 +1,6 @@
 import boto3
 import logging
+import os
 import csv
 import json
 import re
@@ -8,10 +9,15 @@ from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
 from io import StringIO
+from dotenv import load_dotenv , find_dotenv
 
-all_data_file_path = "/source/"
+env_file = find_dotenv(f'.env.{os.getenv("ENV")}') #loads .env.testing or .env.development
+load_dotenv(env_file)
 
-data_tables = [
+AWS_SECRET = os.getenv("AWS_SECRET_TOTESYS_DB")
+SOURCE_PATH = "/source/"
+SOURCE_FILE_SUFFIX = "_original"
+DATA_TABLES = [
     "sales_order",
     "design",
     "currency",
@@ -24,8 +30,9 @@ data_tables = [
     "payment",
     "transaction",
 ]
+#AWS_SECRET = "totesys_database_credentials"
 
-def create_time_prefix_for_file():
+def create_time_based_path():
     """
     Retrieves the current time at which the lambda function is invoked for use in
     the file structure and in returning a value for the lambda handler
@@ -35,6 +42,10 @@ def create_time_prefix_for_file():
     month = current_time.month
     day = current_time.day
     hour = current_time.hour
+    if len(str(month)) == 1:
+        month = "0" + str(hour)
+    if len(str(day)) == 1:
+        day = "0" + str(hour)
     if len(str(hour)) == 1:
         hour = "0" + str(hour)
     minute = current_time.minute
@@ -43,9 +54,9 @@ def create_time_prefix_for_file():
     second = current_time.second
     if len(str(second)) == 1:
         second = "0" + str(second)
-    return f"{year}_{month}_{day}_{hour}:{minute}:{second}"
+    return f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
-def get_secret(secret_name="totesys_database_credentials"):
+def get_secret(secret_name=AWS_SECRET):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
     based on argument given, with the default argument set to the database credentials.
@@ -62,8 +73,6 @@ def get_secret(secret_name="totesys_database_credentials"):
     try:
         get_secret_value_response = client.get_secret_value(SecretId=secret_name)
     except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         logging.error(e)
         raise Exception(f"Can't retrieve secret due to {e}")
 
@@ -81,7 +90,6 @@ def connect_to_bucket(client):
     logging.error("No raw data bucket found")
     raise Exception("No raw data bucket found")
 
-
 def connect_to_db(credentials):
     """
     Uses the secret obtained in the get_secret method to establish a 
@@ -95,6 +103,22 @@ def connect_to_db(credentials):
         port=credentials["port"],
     )
 
+def query_db(dt_name,conn):
+    """
+    Does two queries to the database:
+    1. Name of table's columns --> header of csv format file
+    2. All table's content
+    Returns data in csv format (header + data rows)
+    """
+    query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{dt_name}';"
+    column_names = conn.run(query)
+    header = []
+    for column in column_names:
+        header.append(column[0])
+
+    query = f"SELECT * FROM {dt_name};"
+    data_rows = conn.run(query)
+    return [header] + data_rows
 
 def create_and_upload_to_bucket(data, client, bucket, filename, original):
     """
@@ -111,13 +135,13 @@ def create_and_upload_to_bucket(data, client, bucket, filename, original):
             response = client.put_object(
                 Body=file_to_save,
                 Bucket=bucket,
-                Key=f"{all_data_file_path}{filename}/{filename}_original.csv",
+                Key=f"{SOURCE_PATH}{filename}/{filename}{SOURCE_FILE_SUFFIX}.csv",
             )
         else:
             response = client.put_object(
                 Body=file_to_save,
                 Bucket=bucket,
-                Key=f"{all_data_file_path}{filename}/{filename}_new.csv",
+                Key=f"{SOURCE_PATH}{filename}/{filename}_new.csv",
             )
     except ClientError as e:
         logging.error(e)
@@ -136,38 +160,24 @@ def compare_csvs(csv1, csv2):
     csv file containing all changes to database (if csv1 and csv2 are not equal)
     None (if csv1 and csv2 are equal)
     """
-    try:
-        conn = connect_to_db(get_secret())
-        for data_table_name in data_tables:
-            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{data_table_name}';"
-            column_names = conn.run(query)
-            header = []
-            for column in column_names:
-                header.append(column[0])
-            
-        regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
-        command = f"echo $(diff {csv1} {csv2})"
-        differences = subprocess.run(command, capture_output=True, shell=True)
-        changes_to_table = re.findall(regex, differences.stdout.decode())
-        filepath = f"differences_{create_time_prefix_for_file()}.csv"
-        with open(f"/tmp/{filepath}", "w", newline='') as f:
-            csvwriter = csv.writer(f)
-            csvwriter.writerow(header)
-            for change in changes_to_table:
-                change_list = [k for k in list(change) if not '' == k]
-                csvwriter.writerow(change_list[1].split(','))
 
-        if changes_to_table == '\n':
-            logging.info("No changes in table found")
-        else:
-            logging.info("Changes found in table")
+    regex = r'(> ([A-Za-z,0-9]+))|(\\ ([A-Za-z,0-9]+))'
+    command = f"echo $(diff {csv1} {csv2})"
+    differences = subprocess.run(command, capture_output=True, shell=True)
+    changes_to_table = re.findall(regex, differences.stdout.decode())
+    filepath = f"differences_{create_time_based_path()}.csv"
+    with open(f"/tmp/{filepath}", "w", newline='') as f:
+        csvwriter = csv.writer(f)
+        csvwriter.writerow(header)
+        for change in changes_to_table:
+            change_list = [k for k in list(change) if not '' == k]
+            csvwriter.writerow(change_list[1].split(','))
 
-    except Error as e:
-        logging.error(e)
-        raise Exception(f"Connection to database failed: {e}")
+    if changes_to_table == '\n':
+        logging.info("No changes in table found")
+    else:
+        logging.info("Changes found in table")
 
-    finally:
-        if "conn" in locals():
-            conn.close()
+  
 
     return filepath
