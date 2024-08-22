@@ -160,58 +160,50 @@ class TestLambdaHandler:
         with pytest.raises(Exception):
             lambda_handler(event, context)
 
-    # The test below checks files are written locally but we no longer care about it being written locally so it's skipped
-    @pytest.mark.skip()
+    
     @pytest.mark.it(
-        "script succesfully writes csv files containing database data to local folder"
+        "Successfully uploads csv files to /source and /history/timepath when /source is empty"
     )
-    def test_succesfully_save_datatables_to_csv(self, s3, secretsmanager):
-        saved_csv_path = data_dir
-        expected_files = {
-            "sales_order.csv": 0,
-            "design.csv": 0,
-            "currency.csv": 0,
-            "staff.csv": 0,
-            "counterparty.csv": 0,
-            "address.csv": 0,
-            "department.csv": 0,
-            "purchase_order.csv": 0,
-            "payment_type.csv": 0,
-            "payment.csv": 0,
-            "transaction.csv": 0,
-        }
-        event = {}
-        context = DummyContext()
-        lambda_handler(event, context)
-        folder_content = os.listdir(saved_csv_path)
-        for file in expected_files:
-            assert file in folder_content
-
-    @pytest.mark.it(
-        "Successfully uploads original files to s3 bucket when bucket is empty"
-    )
-    def test_uploads_csv_to_raw_data_bucket(self, s3, secretsmanager):
-        file_path = "/original/"
+    def test_uploads_csv_to_source_and_history_first_call(self, s3, secretsmanager):
+        # UP TO HERE! WE HAVE TO MOCK DATETIME TO CREATE HISTORY DIRS
+        path_source = "source/"
+        path_history ="history/"
+        suffix_source = "_new" 
+        suffix_history = "_differences"
         event = {}
         context = DummyContext()
         lambda_handler(event, context)
         listing = s3.list_objects_v2(Bucket="totesys-raw-data-000000")
-        assert len(listing["Contents"]) == 11
-        expected_files = {
-            f"{file_path}sales_order_original.csv": 0,
-            f"{file_path}design_original.csv": 0,
-            f"{file_path}currency_original.csv": 0,
-            f"{file_path}staff_original.csv": 0,
-            f"{file_path}counterparty_original.csv": 0,
-            f"{file_path}address_original.csv": 0,
-            f"{file_path}department_original.csv": 0,
-            f"{file_path}purchase_order_original.csv": 0,
-            f"{file_path}payment_type_original.csv": 0,
-            f"{file_path}payment_original.csv": 0,
-            f"{file_path}transaction_original.csv": 0,
+        assert len(listing["Contents"]) == 11*2
+        expected_files_in_source = {
+            f"{path_source}sales_order{suffix_source}.csv": 0,
+            f"{path_source}design{suffix_source}.csv": 0,
+            f"{path_source}currency{suffix_source}.csv": 0,
+            f"{path_source}staff{suffix_source}.csv": 0,
+            f"{path_source}counterparty{suffix_source}.csv": 0,
+            f"{path_source}address{suffix_source}.csv": 0,
+            f"{path_source}department{suffix_source}.csv": 0,
+            f"{path_source}purchase_order{suffix_source}.csv": 0,
+            f"{path_source}payment_type{suffix_source}.csv": 0,
+            f"{path_source}payment{suffix_source}.csv": 0,
+            f"{path_source}transaction{suffix_source}.csv": 0,
+        }
+        expected_files_in_history = {
+            f"{path_history}sales_order{suffix_history}.csv": 0,
+            f"{path_history}design{suffix_history}.csv": 0,
+            f"{path_history}currency{suffix_history}.csv": 0,
+            f"{path_history}staff{suffix_history}.csv": 0,
+            f"{path_history}counterparty{suffix_history}.csv": 0,
+            f"{path_history}address{suffix_history}.csv": 0,
+            f"{path_history}department{suffix_history}.csv": 0,
+            f"{path_history}purchase_order{suffix_history}.csv": 0,
+            f"{path_history}payment_type{suffix_history}.csv": 0,
+            f"{path_history}payment{suffix_history}.csv": 0,
+            f"{path_history}transaction{suffix_history}.csv": 0,
         }
         for i in range(len(listing)):
-            assert f'{listing["Contents"][i]["Key"]}' in expected_files
+            assert f'{listing["Contents"][i]["Key"]}' in expected_files_in_source
+            assert f'{listing["Contents"][i]["Key"]}' in expected_files_in_history
 
     # @pytest.mark.it("Successfully compares new db queries with _original.csv")
     # def test_compares_csv_to_original(self, s3, secretsmanager):

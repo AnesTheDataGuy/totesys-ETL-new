@@ -16,9 +16,11 @@ env_file = find_dotenv(
 )  # loads .env.testing or .env.development
 load_dotenv(env_file)
 
-AWS_SECRET = os.getenv("AWS_SECRET_TOTESYS_DB")
+AWS_SECRET_DB_CRED = os.getenv("AWS_SECRET_TOTESYS_DB")
+HISTORY_PATH = "/history/" 
 SOURCE_PATH = "/source/"
-SOURCE_FILE_SUFFIX = "_original"
+SOURCE_FILE_SUFFIX = "_new"
+DIFFERENCES_FILE_SUFFIX = "_differences"
 DATA_TABLES = [
     "sales_order",
     "design",
@@ -32,8 +34,6 @@ DATA_TABLES = [
     "payment",
     "transaction",
 ]
-# AWS_SECRET = "totesys_database_credentials"
-
 
 def create_time_based_path():
     """
@@ -46,9 +46,9 @@ def create_time_based_path():
     day = current_time.day
     hour = current_time.hour
     if len(str(month)) == 1:
-        month = "0" + str(hour)
+        month = "0" + str(month)
     if len(str(day)) == 1:
-        day = "0" + str(hour)
+        day = "0" + str(day)
     if len(str(hour)) == 1:
         hour = "0" + str(hour)
     minute = current_time.minute
@@ -60,7 +60,7 @@ def create_time_based_path():
     return f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
 
-def get_secret(secret_name=AWS_SECRET):
+def get_secret(secret_name=AWS_SECRET_DB_CRED):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
     based on argument given, with the default argument set to the database credentials.
@@ -128,7 +128,7 @@ def query_db(dt_name, conn):
     return [header] + data_rows
 
 
-def create_and_upload_to_bucket(data, client, bucket, filename, original):
+def create_and_upload_csv(data, client, bucket, tablename, first_call):
     """
     Converts a table from a database into a CSV file and uploads that CSV file to a
     specified bucket, raising an exception if there's an error in uploading the file.
@@ -139,18 +139,27 @@ def create_and_upload_to_bucket(data, client, bucket, filename, original):
     file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
     try:
-        if original:
-            response = client.put_object(
+        if first_call:
+            client.put_object(
                 Body=file_to_save,
                 Bucket=bucket,
-                Key=f"{SOURCE_PATH}{filename}{SOURCE_FILE_SUFFIX}.csv",
+                Key=f"{SOURCE_PATH}{tablename}{SOURCE_FILE_SUFFIX}.csv",
+            )
+            client.put_object(
+                Body=file_to_save,
+                Bucket=bucket,
+                Key=f"{HISTORY_PATH}{create_time_based_path()}{tablename}{DIFFERENCES_FILE_SUFFIX}.csv",
             )
         else:
-            response = client.put_object(
+            with open(f'/tmp/{tablename}_new.csv', 'wb') as csvfile:
+                csvfile.write(file_to_save)
+            
+            """
+            client.put_object(
                 Body=file_to_save,
                 Bucket=bucket,
-                Key=f"{SOURCE_PATH}{filename}_new.csv",
-            )
+                Key=f"/tmp/{tablename}_new.csv",
+            )"""
     except ClientError as e:
         logging.error(e)
         raise Exception("Failed to upload file")
@@ -181,10 +190,7 @@ def compare_csvs(dt_name):
             header.append(row)
             break
 
-    # regex = r'>\s*(([A-Za-z0-9\.@:\-_\s,:]+))+'
     regex = r">\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)"
-    # command = f"echo $(diff {csv_prev} {csv_new})"
-    # differences = subprocess.run(command, capture_output=True)
 
     diff_output = subprocess.run(
         ["diff", csv_prev, csv_new], capture_output=True

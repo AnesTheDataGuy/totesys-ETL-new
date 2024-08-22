@@ -4,6 +4,8 @@ import os
 import json
 import csv
 from moto import mock_aws
+from unittest.mock import patch
+from datetime import datetime as dt
 from src.utils.extract_utils import *
 from dotenv import load_dotenv, find_dotenv
 
@@ -16,11 +18,9 @@ PG_PASSWORD = os.getenv("PG_PASSWORD")
 PG_DATABASE = os.getenv("PG_DATABASE")
 PG_HOST = os.getenv("PG_HOST")
 PG_PORT = os.getenv("PG_PORT")
-AWS_SECRET = os.getenv("AWS_SECRET")
+AWS_SECRET = os.getenv("AWS_SECRET_TOTESYS_DB")
 
 print(f"\n <><><><> {PG_USER} ,{AWS_SECRET}")
-
-
 @pytest.fixture(scope="function")
 def aws_credentials():
     """Mocked AWS Credentials for S3 bucket."""
@@ -29,7 +29,6 @@ def aws_credentials():
     os.environ["AWS_SECURITY_TOKEN"] = "test"
     os.environ["AWS_SESSION_TOKEN"] = "test"
     os.environ["AWS_DEFAULT_REGION"] = "eu-west-2"
-
 
 @pytest.fixture(scope="function")
 def s3(aws_credentials):
@@ -74,53 +73,6 @@ def s3(aws_credentials):
         )
 
         yield s3
-
-
-@pytest.fixture(scope="function")
-def s3_no_dt_changes(aws_credentials):
-    """Mocked S3 client with raw data bucket."""
-    with mock_aws():
-        s3 = boto3.client("s3")
-        s3.create_bucket(
-            Bucket="totesys-raw-data-000000",
-            CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
-        )
-        s3.put_object(
-            Body="""staff_id,first_name,last_name,department_id,email_address,created_at,last_updated
-        1,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
-        2,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
-        3,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        4,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
-        5,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
-        6,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        7,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
-        8,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
-        9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
-            Bucket="totesys-raw-data-000000",
-            Key="test_csv_no_diff.csv",
-        )
-
-        s3.put_object(
-            Body="""staff_id,first_name,last_name,department_id,email_address,created_at,last_updated
-        1,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
-        2,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
-        3,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        4,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
-        5,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
-        6,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        7,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
-        8,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
-        9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
-        11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
-            Bucket="totesys-raw-data-000000",
-            Key="test_csv_no_diff_new.csv",
-        )
-
-        yield s3
-
 
 @pytest.fixture(scope="function")
 def s3_rows_edited(aws_credentials):
@@ -201,6 +153,16 @@ def secretsmanager_broken(aws_credentials):
         )
         yield secretsmanager
 
+class TestTimePath:
+
+    @patch('src.utils.extract_utils.dt')
+    @pytest.mark.it("Create time prefix function returns formatted datetime")
+    def test_correct_time_is_returned(self, patched_dt):
+        patched_dt.now.return_value = dt(2024,1,1)
+        patched_dt.side_effect = lambda *args, **kw: dt(*args, **kw)
+        result = create_time_based_path()
+        patched_dt.now.assert_called_once()
+        assert result == '2024/01/01/00:00:00/'
 
 class TestGetSecret:
 
@@ -217,6 +179,67 @@ class TestGetSecret:
         with pytest.raises(Exception):
             get_secret("imposter_steve")
 
+class TestConnectToBucket:
+
+    @pytest.mark.it("Connect to bucket function returns bucket name")
+    def test_connect_to_bucket_returns_correct_reponse(self, s3):
+        result = connect_to_bucket(s3)
+        assert result == "totesys-raw-data-000000"
+
+    @pytest.mark.it(
+            "Connect to bucket function returns exception when no bucket is found")
+    def test_connect_to_bucket_returns_exception(self, s3_no_buckets):
+        with pytest.raises(Exception):
+            connect_to_bucket(s3_no_buckets)
+
+class TestConnectToDB:
+
+    @pytest.mark.it("Connect to DB returns credentials")
+    def test_connect_to_db_returns_valid_response(self, secretsmanager):
+        inp = get_secret()
+        result = connect_to_db(inp) 
+        assert type(result) is Connection
+
+class TestQueryDB:
+
+    @pytest.mark.it("Return valid csv formatted data (header + table rows)")
+    def test_db_query_returns_valid_csv_format_data(self, secretsmanager):
+        dt = "currency"
+        conn = connect_to_db(get_secret()) 
+        result = query_db(dt,conn) 
+        assert result[0] == ['currency_id', 'currency_code', 'created_at', 'last_updated']
+        assert result[6][1] == 'GBP'
+
+class TestCreateAndUploadCsv:
+
+    @pytest.mark.it("Succesfully saves csv file to both history and source if csv file with same name is not found inside source dir")
+    @patch('src.utils.extract_utils.dt')
+    def test_function_saves_csv_in_both_history_and_source_first_call(self, patched_dt, s3):
+        patched_dt.now.return_value = dt(2024,1,1)
+        patched_dt.side_effect = lambda *args, **kw: dt(*args, **kw)
+        bucket_name = "totesys-raw-data-000000"
+        file_name = 'test_file'
+        source_path = "/source/"
+        history_path = "/history/"
+        data = [['A', 'B', 'C'], [1,2,3], [4,5,6]]
+        create_and_upload_csv(data, s3, bucket_name, file_name, True)
+        list_objects = s3.list_objects_v2(Bucket="totesys-raw-data-000000")['Contents']
+        assert list_objects[1]['Key'] == source_path + file_name + '_new.csv' 
+        assert list_objects[0]['Key'] == history_path + '2024/01/01/00:00:00/' + file_name + '_differences.csv'
+        
+    @pytest.mark.it("Succesfully saves csv file to /tmp if csv file with same name already exists in /source")
+    def test_function_saves_csv_in_temp_after_first_call(self, s3):
+        bucket_name = "totesys-raw-data-000000"
+        dt_name = 'test_dt'
+        data = [['A', 'B', 'C'], [1,2,3], [4,5,6]]
+        create_and_upload_csv(data, s3, bucket_name, dt_name, False)
+        csv_path_list = [
+            filename
+            for filename in os.listdir("/tmp")
+            if filename.startswith("test_dt_new")
+        ]
+        assert len(csv_path_list) > 0
+        
 
 class TestCompareCsvs:
     # @pytest.mark.skip()
