@@ -173,8 +173,8 @@ def compare_csvs(dt_name):
             break
     
     
-    regex = r'>\s*(([A-Za-z0-9\.@:\-_\s,:]+))+'
-    #regex = r'(> ([A-Za-z,0-9.@:-_/s]+))|(\\ ([A-Za-z,0-9.@:-_/s]+))'
+    #regex = r'>\s*(([A-Za-z0-9\.@:\-_\s,:]+))+'
+    regex = r'>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)'
     command = f"echo $(diff {csv_prev} {csv_new})"
     differences = subprocess.run(command, capture_output=True, shell=True)
     print(f"\n differences: {differences}")

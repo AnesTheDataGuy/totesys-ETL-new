@@ -48,7 +48,7 @@ def s3(aws_credentials):
         9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         """,
         Bucket="totesys-raw-data-000000",
-        Key='test_csv.csv'
+        Key='test_csv_extra_rows.csv'
         )
         
         s3.put_object(Body=
@@ -65,7 +65,7 @@ def s3(aws_credentials):
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
         Bucket="totesys-raw-data-000000",
-        Key='test_csv_new.csv'
+        Key='test_csv_extra_rows_new.csv'
         )
         
         yield s3
@@ -93,7 +93,7 @@ def s3_no_dt_changes(aws_credentials):
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
         Bucket="totesys-raw-data-000000",
-        Key='test_csv.csv'
+        Key='test_csv_no_diff.csv'
         )
         
         s3.put_object(Body=
@@ -110,7 +110,7 @@ def s3_no_dt_changes(aws_credentials):
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
         Bucket="totesys-raw-data-000000",
-        Key='test_csv_new.csv'
+        Key='test_csv_no_diff_new.csv'
         )
         
         yield s3
@@ -138,7 +138,7 @@ def s3_rows_edited(aws_credentials):
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
         Bucket="totesys-raw-data-000000",
-        Key='test_csv.csv'
+        Key='test_csv_edited_rows.csv'
         )
         
         s3.put_object(Body=
@@ -155,7 +155,7 @@ def s3_rows_edited(aws_credentials):
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@kastriot.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
         Bucket="totesys-raw-data-000000",
-        Key='test_csv_new.csv'
+        Key='test_csv_edited_rows_new.csv'
         )
         
         yield s3
@@ -209,24 +209,27 @@ class TestGetSecret:
             get_secret("imposter_steve")
 
 class TestCompareCsvs:
-    @pytest.mark.skip()
+    #@pytest.mark.skip()
     @pytest.mark.it("Creates a csv file")
     def test_file_exists(self, s3, secretsmanager):
-        s3.download_file("totesys-raw-data-000000", 'test_csv.csv', '/tmp/test_csv.csv')
-        s3.download_file("totesys-raw-data-000000", 'test_csv_new.csv', '/tmp/test_csv_new.csv')  
+        s3.download_file("totesys-raw-data-000000", 'test_csv_extra_rows.csv', '/tmp/test_csv_extra_rows.csv')
+        s3.download_file("totesys-raw-data-000000", 'test_csv_extra_rows_new.csv', '/tmp/test_csv_extra_rows_new.csv')  
         
-        result = compare_csvs('test_csv')
-        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_differences')]
+        compare_csvs('test_csv_extra_rows')
+        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_extra_rows_differences')]
         
         assert len(csv_path_list) > 0
     
-    @pytest.mark.skip()
+    #@pytest.mark.skip()
     @pytest.mark.it(
             "Creates a csv file containing changes between the two csvs (new dt has extra rows)"
             )
-    def test_change_in_datatable_extra_rows(self):
+    def test_change_in_datatable_extra_rows(self,s3, secretsmanager):
+        s3.download_file("totesys-raw-data-000000", 'test_csv_extra_rows.csv', '/tmp/test_csv_extra_rows.csv')
+        s3.download_file("totesys-raw-data-000000", 'test_csv_extra_rows_new.csv', '/tmp/test_csv_extra_rows_new.csv')  
         
-        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_differences')]
+        compare_csvs('test_csv_extra_rows')
+        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_extra_rows_differences')]
         print(csv_path_list)
         with open(f'/tmp/{csv_path_list[0]}', 'r') as reader:
             next(reader)
@@ -234,36 +237,36 @@ class TestCompareCsvs:
 
             assert list(differences) == [
                 ['10', 'Steve', 'Imposter', '1', 'steve_imposter@nc.com',
-                '2023-08-12 10:30:00', '2023-08-12 10:30:00 '
+                '2023-08-12 10:30:00', '2023-08-12 10:30:00'
                 ],
                 ['11', 'Stevie', 'Impostah', '1', 'stevie_impostah@nc.com',
-                 '2024-08-12 10:30:00', '2024-08-12 10:30:00 '
+                '2024-08-12 10:30:00', '2024-08-12 10:30:00'
                 ]
             ]
 
-    @pytest.mark.skip()       
+    #@pytest.mark.skip()       
     @pytest.mark.it("Writes empty csv file when both csvs are the same")
     def test_no_change_in_database(self, s3_no_dt_changes, secretsmanager):
-        s3_no_dt_changes.download_file("totesys-raw-data-000000", 'test_csv.csv', '/tmp/test_csv.csv')
-        s3_no_dt_changes.download_file("totesys-raw-data-000000", 'test_csv_new.csv', '/tmp/test_csv_new.csv')  
+        s3_no_dt_changes.download_file("totesys-raw-data-000000", 'test_csv_no_diff.csv', '/tmp/test_csv_no_diff.csv')
+        s3_no_dt_changes.download_file("totesys-raw-data-000000", 'test_csv_no_diff_new.csv', '/tmp/test_csv_no_diff_new.csv')  
        
-        compare_csvs('test_csv')
-        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_differences')]
+        compare_csvs('test_csv_no_diff')
+        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_no_diff_differences')]
         with open(f'/tmp/{csv_path_list[0]}', 'r') as reader:
             next(reader)
             differences = csv.reader(reader)
             assert list(differences) == []
     
-
+    #@pytest.mark.skip() 
     @pytest.mark.it(
             "Creates a csv file containing changes between the two csvs (new dt has edited rows)"
             )
     def test_change_in_datatable_edited_rows(self,s3_rows_edited,secretsmanager):
-        s3_rows_edited.download_file("totesys-raw-data-000000", 'test_csv.csv', '/tmp/test_csv.csv')
-        s3_rows_edited.download_file("totesys-raw-data-000000", 'test_csv_new.csv', '/tmp/test_csv_new.csv')  
+        s3_rows_edited.download_file("totesys-raw-data-000000", 'test_csv_edited_rows.csv', '/tmp/test_csv_edited_rows.csv')
+        s3_rows_edited.download_file("totesys-raw-data-000000", 'test_csv_edited_rows_new.csv', '/tmp/test_csv_edited_rows_new.csv')  
         
-        compare_csvs('test_csv')
-        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_differences')]
+        compare_csvs('test_csv_edited_rows')
+        csv_path_list = [filename for filename in os.listdir('/tmp') if filename.startswith('test_csv_edited_rows_differences')]
         print(csv_path_list)
         with open(f'/tmp/{csv_path_list[0]}', 'r') as reader:
             next(reader)
@@ -274,7 +277,7 @@ class TestCompareCsvs:
                  "2023-08-10 08:00:00","2023-08-10 08:00:00"
                 ],
                 ['11', 'Stevie', 'Impostah', '1', 'stevie_impostah@kastriot.com',
-                 '2024-08-12 10:30:00', '2024-08-12 10:30:00 '
+                 '2024-08-12 10:30:00', '2024-08-12 10:30:00'
                 ]
             ]
             
