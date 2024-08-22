@@ -4,9 +4,11 @@ from io import StringIO, BytesIO
 import polars as pl
 from botocore.exceptions import ClientError
 from io import BytesIO
+from pg8000.native import Connection
+import json
 
 
-def finds_data_bucket():
+def find_processed_data_bucket():
     """
     This function finds the processed data bucket on AWS S3.
 
@@ -31,23 +33,71 @@ def finds_data_bucket():
 
     return processed_data_bucket
 
-
-def read_parquet(bytes_io):
+def get_secret(secret_name):
     """
-    This function reads a parquet file from a BytesIO object into a DataFrame.
+    Initialises a boto3 secrets manager client and retrieves secret from secrets manager
+    based on argument given, with the default argument set to the database credentials.
+    The secret returned should be a dictionary with 5 keys:
+    user - the username for the database
+    password - the password for the user
+    host - the url of the server hosting the database
+    port - which port we are using to connect with the database
+    database - the name of the database that we want to connect to
+    """
+    session = boto3.session.Session()
+    client = session.client(service_name="secretsmanager", region_name="eu-west-2")
+
+    try:
+        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        logging.error(e)
+        raise Exception(f"Can't retrieve secret due to {e}")
+
+    return json.loads(get_secret_value_response["SecretString"])
+
+
+def connect_to_db(credentials):
+    """
+    Uses the secret obtained in the get_secret method to establish a 
+    connection to the database
+    """
+    return Connection(
+        user=credentials["user"],
+        password=credentials["password"],
+        host=credentials["host"],
+        database=credentials["database"],
+        port=credentials["port"],
+    )
+
+def convert_parquet_to_df(parquet):
+    """
+    This takes in a parquet file name, finds this file within the processed data bucket then
+    converts it to a parquet file in buffer storage.
 
     Args:
-        bytes_io (BytesIO): BytesIO object containing the parquet file data
+        parquet (string): Name of csv file
 
     Returns:
-        df (pl.DataFrame): DataFrame containing the data from the parquet file
+        df (DataFrame object): a DataFrame object created from a parquet file conversion
     """
+    if not parquet.endswith(".parquet"):
+        return f"{parquet} is not a .parquet file."
+
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
     try:
-        df = pl.read_parquet(bytes_io)
-        return df
-    except Exception as e:
-        logging.error(f"Failed to read parquet file: {e}")
-        return e
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket, Key=parquet
+        )  # change f string for when we finalise extract structure
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
 
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
 
-
+    return df
