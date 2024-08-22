@@ -51,17 +51,17 @@ class TestTransform:
                 Bucket='totesys-raw-data-000000',
                 Key=f'history/YYYY/MM/DD/HH:MM:SS/{csv}'
             )
-        expected_pq = {'history/YYYY/MM/DD/HH:MM:SS//address.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//design.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//currency.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//staff.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//counterparty.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//sales_order.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//department.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//purchase_order.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//payment_type.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//payment.parquet': 0,
-                       'history/YYYY/MM/DD/HH:MM:SS//transaction.parquet': 0}
+        expected_pq = {'history/YYYY/MM/DD/HH:MM:SS/address.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/design.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/currency.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/staff.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/counterparty.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/sales_order.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/department.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/purchase_order.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/payment_type.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/payment.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS/transaction.parquet': 0}
 
         res = transform(event, context)
         proc_data_bucket_objects = s3.list_objects(Bucket="totesys-processed-data-000000")['Contents']

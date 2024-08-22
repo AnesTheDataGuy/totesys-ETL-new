@@ -54,7 +54,7 @@ def convert_csv_to_parquet(csv):
     Returns:
         parquet (string): This string contains parquet file data converted from csv format.
     """
-    if csv[-4:] != ".csv":
+    if not csv.endswith(".csv"):
         return f"{csv} is not a .csv file."
 
     s3_client = boto3.client("s3")
@@ -65,7 +65,8 @@ def convert_csv_to_parquet(csv):
             Bucket=raw_data_bucket, Key=f"history/YYYY/MM/DD/HH:MM:SS/{csv}"
         )  # change f string for when we finalise extract structure
         csv_data = res["Body"].read().decode("utf-8")
-    except ClientError:
+    except ClientError as e:
+        logging.error(f"Failed to get csv file: {e}")
         return "csv file not found"
 
     data_buffer_csv = StringIO(csv_data)

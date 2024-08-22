@@ -37,9 +37,6 @@ def lambda_handler(event, context):
     logger.info("Lambda function invoked.")
     logger.info(f"Event received: {event}")
 
-    uploaded_files = []
-    failed_files = []
-
     s3_client = boto3.client("s3")
 
     prefix = event["time_prefix"]
@@ -63,23 +60,12 @@ def lambda_handler(event, context):
                 s3_client.put_object(
                     Body=parquet,
                     Bucket=processed_data_bucket,
-                    Key=f"history/{prefix}/{file}.parquet",
+                    Key=f"history/{prefix}{file}.parquet",
                 )
                 logger.info(f"Successfully uploaded {file}.parquet to {processed_data_bucket}")
-                uploaded_files.append(file)
 
         except ClientError as e:
             logger.error(f"Failed to upload file {file}: {e}")
-            failed_files.append(file)
-
-    if failed_files:
-        logger.error(f"Failed to upload the following files: {failed_files}")
-        return {
-            "time_prefix": prefix,
-            "status": "Some uploads failed",
-            "uploaded_files" : uploaded_files,
-            "failed_files": failed_files
-        }
     
     logger.info("All files processed and uploaded successfully.")
     logger.info("Lambda function completed.")
