@@ -4,7 +4,15 @@ import os
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
-from src.utils.extract_utils import create_time_based_path, get_secret, connect_to_bucket, connect_to_db, query_db, create_and_upload_to_bucket, compare_csvs
+from src.utils.extract_utils import (
+    create_time_based_path,
+    get_secret,
+    connect_to_bucket,
+    connect_to_db,
+    query_db,
+    create_and_upload_to_bucket,
+    compare_csvs,
+)
 
 """
 RAW DATA BUCKET STRUCTURE:
@@ -69,17 +77,18 @@ DATA_TABLES = [
     "transaction",
 ]
 
+
 def lambda_handler(event, context):
     """
     Wrapper function that runs utils functions together.
-    This function establishes a connection to the Totesys online database 
+    This function establishes a connection to the Totesys online database
     using credentials obtained from an AWS secret.
-    It retrieves the latest data tables and compares them with previously 
+    It retrieves the latest data tables and compares them with previously
     stored versions (found in the /source/ directory with an "_original" suffix).
-    The differences between the current and previous tables are saved 
-    as CSV files, organized in a directory structure based on 
+    The differences between the current and previous tables are saved
+    as CSV files, organized in a directory structure based on
     the current date and time (year/month/day/hh:mm:ss).
-    Finally, the existing CSV files in the /source/ directory, 
+    Finally, the existing CSV files in the /source/ directory,
     which hold the complete data tables, are updated with the latest content.
     """
 
@@ -97,10 +106,13 @@ def lambda_handler(event, context):
     try:
         conn = connect_to_db(db_credentials)
         for data_table_name in DATA_TABLES:
-            file_data = query_db(data_table_name,conn)
+            file_data = query_db(data_table_name, conn)
 
-            #create _original file if doesn't exist, or create _new file if it does
-            if not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files:
+            # create _original file if doesn't exist, or create _new file if it does
+            if (
+                not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv"
+                in bucket_files
+            ):
                 create_and_upload_to_bucket(
                     file_data, s3_client, raw_data_bucket, data_table_name, True
                 )
@@ -109,17 +121,21 @@ def lambda_handler(event, context):
                     file_data, s3_client, raw_data_bucket, data_table_name, False
                 )
 
-                #save a copy of _original to /tmp, where it can be manipulated by the lambda function
-                s3_client.download_file(Bucket=raw_data_bucket, 
-                Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv',
-                Filename=f'/tmp/{data_table_name}.csv')
+                # save a copy of _original to /tmp, where it can be manipulated by the lambda function
+                s3_client.download_file(
+                    Bucket=raw_data_bucket,
+                    Key=f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv",
+                    Filename=f"/tmp/{data_table_name}.csv",
+                )
 
-                #save a copy of _new to /tmp, where it can be manipulated by the lambda function
-                s3_client.download_file(Bucket=raw_data_bucket, 
-                Key=f'{SOURCE_PATH}{data_table_name}_new.csv',
-                Filename=f'/tmp/{data_table_name}_new.csv')
-                
-                #is it comparing the new datatable with the very original one each time?
+                # save a copy of _new to /tmp, where it can be manipulated by the lambda function
+                s3_client.download_file(
+                    Bucket=raw_data_bucket,
+                    Key=f"{SOURCE_PATH}{data_table_name}_new.csv",
+                    Filename=f"/tmp/{data_table_name}_new.csv",
+                )
+
+                # is it comparing the new datatable with the very original one each time?
                 """
                 changes_csv = compare_csvs(
                     f'{SOURCE_PATH}{data_table_name}/{data_table_name}{SOURCE_FILE_SUFFIX}.csv',
@@ -128,24 +144,27 @@ def lambda_handler(event, context):
                 """
                 changes_csv = compare_csvs(data_table_name)
 
-                #save the _differences file to history   
-                s3_client.upload_file(Bucket=raw_data_bucket,
-                                      Filename=f"/tmp/{changes_csv}",
-                                      Key=f'{HISTORY_PATH}{create_time_based_path()}{changes_csv}'              
-                                      )
-                
-                #replace /source/*_original with /source/*_new
-                s3_client.upload_file(Bucket=raw_data_bucket,
-                                      Filename=f'{SOURCE_PATH}{data_table_name}_new.csv',
-                                      Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}'              
-                                      )
-                #delete /source/*_new
-                s3_client.delete_object(Bucket=raw_data_bucket,
-                                     Key=f'{SOURCE_PATH}{data_table_name}_new.csv'
-                                     )
-                #removing the temporary files
-                os.remove(f'/tmp/{data_table_name}.csv')
-                os.remove(f'/tmp/{data_table_name}_new.csv')
+                # save the _differences file to history
+                s3_client.upload_file(
+                    Bucket=raw_data_bucket,
+                    Filename=f"/tmp/{changes_csv}",
+                    Key=f"{HISTORY_PATH}{create_time_based_path()}{changes_csv}",
+                )
+
+                # replace /source/*_original with /source/*_new
+                s3_client.upload_file(
+                    Bucket=raw_data_bucket,
+                    Filename=f"{SOURCE_PATH}{data_table_name}_new.csv",
+                    Key=f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}",
+                )
+                # delete /source/*_new
+                s3_client.delete_object(
+                    Bucket=raw_data_bucket,
+                    Key=f"{SOURCE_PATH}{data_table_name}_new.csv",
+                )
+                # removing the temporary files
+                os.remove(f"/tmp/{data_table_name}.csv")
+                os.remove(f"/tmp/{data_table_name}_new.csv")
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
 
@@ -157,4 +176,4 @@ def lambda_handler(event, context):
         if "conn" in locals():
             conn.close()
 
-    #return {"time_path": time_path}
+    # return {"time_path": time_path}

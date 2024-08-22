@@ -9,9 +9,11 @@ from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
 from io import StringIO
-from dotenv import load_dotenv , find_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-env_file = find_dotenv(f'.env.{os.getenv("ENV")}') #loads .env.testing or .env.development
+env_file = find_dotenv(
+    f'.env.{os.getenv("ENV")}'
+)  # loads .env.testing or .env.development
 load_dotenv(env_file)
 
 AWS_SECRET = os.getenv("AWS_SECRET_TOTESYS_DB")
@@ -30,7 +32,8 @@ DATA_TABLES = [
     "payment",
     "transaction",
 ]
-#AWS_SECRET = "totesys_database_credentials"
+# AWS_SECRET = "totesys_database_credentials"
+
 
 def create_time_based_path():
     """
@@ -56,6 +59,7 @@ def create_time_based_path():
         second = "0" + str(second)
     return f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
+
 def get_secret(secret_name=AWS_SECRET):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
@@ -78,6 +82,7 @@ def get_secret(secret_name=AWS_SECRET):
 
     return json.loads(get_secret_value_response["SecretString"])
 
+
 def connect_to_bucket(client):
     """
     Searches for a raw data bucket within an AWS account and returns bucket name if
@@ -90,9 +95,10 @@ def connect_to_bucket(client):
     logging.error("No raw data bucket found")
     raise Exception("No raw data bucket found")
 
+
 def connect_to_db(credentials):
     """
-    Uses the secret obtained in the get_secret method to establish a 
+    Uses the secret obtained in the get_secret method to establish a
     connection to the database
     """
     return Connection(
@@ -103,7 +109,8 @@ def connect_to_db(credentials):
         port=credentials["port"],
     )
 
-def query_db(dt_name,conn):
+
+def query_db(dt_name, conn):
     """
     Does two queries to the database:
     1. Name of table's columns --> header of csv format file
@@ -120,9 +127,10 @@ def query_db(dt_name,conn):
     data_rows = conn.run(query)
     return [header] + data_rows
 
+
 def create_and_upload_to_bucket(data, client, bucket, filename, original):
     """
-    Converts a table from a database into a CSV file and uploads that CSV file to a 
+    Converts a table from a database into a CSV file and uploads that CSV file to a
     specified bucket, raising an exception if there's an error in uploading the file.
     The data argument is a list of lists.
     """
@@ -147,9 +155,10 @@ def create_and_upload_to_bucket(data, client, bucket, filename, original):
         logging.error(e)
         raise Exception("Failed to upload file")
 
+
 def compare_csvs(dt_name):
     """
-    Takes two csvs and compares the differences between them, returning an 
+    Takes two csvs and compares the differences between them, returning an
     empty csv if no differences found.
 
     Args:
@@ -160,40 +169,43 @@ def compare_csvs(dt_name):
     csv file containing all changes to database (if csv1 and csv2 are not equal)
     None (if csv1 and csv2 are equal)
     """
-    #print(f"\n ><><><>< {os.listdir('/tmp')}")
-    csv_prev = f'/tmp/{dt_name}.csv'
-    csv_new = f'/tmp/{dt_name}_new.csv'
+    # print(f"\n ><><><>< {os.listdir('/tmp')}")
+    csv_prev = f"/tmp/{dt_name}.csv"
+    csv_new = f"/tmp/{dt_name}_new.csv"
 
     # read the header from the CSV file
-    with open(csv_prev,"r", newline='') as csv_file: #, newline=''
-        csv_reader = csv.reader(csv_file, delimiter = ',')
+    with open(csv_prev, "r", newline="") as csv_file:  # , newline=''
+        csv_reader = csv.reader(csv_file, delimiter=",")
         header = []
         for row in csv_reader:
             header.append(row)
             break
-    
-    
-    #regex = r'>\s*(([A-Za-z0-9\.@:\-_\s,:]+))+'
-    regex = r'>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)'
-    command = f"echo $(diff {csv_prev} {csv_new})"
-    differences = subprocess.run(command, capture_output=True, shell=True)
+
+    # regex = r'>\s*(([A-Za-z0-9\.@:\-_\s,:]+))+'
+    regex = r">\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)"
+    # command = f"echo $(diff {csv_prev} {csv_new})"
+    # differences = subprocess.run(command, capture_output=True)
+
+    diff_output = subprocess.run(
+        ["diff", csv_prev, csv_new], capture_output=True
+    ).stdout
+    differences = subprocess.run(["echo", diff_output], capture_output=True)
+
     print(f"\n differences: {differences}")
     changes_to_table = re.findall(regex, differences.stdout.decode())
     print(f"\nCHANGES TO TABLE: {changes_to_table}")
     filepath = f"{dt_name}_differences.csv"
-    with open(f"/tmp/{filepath}", "w", newline='') as f:
+    with open(f"/tmp/{filepath}", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(header[0])
         for change in changes_to_table:
-            change_list = [k for k in list(change) if not '' == k]
+            change_list = [k for k in list(change) if not "" == k]
             print(f"\nchange_list: {change_list}")
-            csvwriter.writerow(change_list[0].split(','))
+            csvwriter.writerow(change_list[0].split(","))
 
-    if changes_to_table == '\n':
+    if changes_to_table == "\n":
         logging.info("No changes in table found")
     else:
         logging.info("Changes found in table")
-
-  
 
     return filepath

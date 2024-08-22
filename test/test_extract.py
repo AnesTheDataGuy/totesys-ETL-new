@@ -130,8 +130,10 @@ def secretsmanager_broken(aws_credentials):
         )
         yield secretsmanager
 
+
 class DummyContext:  # Dummy context class used for testing
     pass
+
 
 class TestLambdaHandler:
     # @pytest.mark.skip()
