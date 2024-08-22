@@ -123,3 +123,14 @@ class TestConvertCsvToParquet:
     def test_returns_appropriate_message_file_is_not_found_in_bucket(self,s3):
         result = convert_csv_to_parquet('dummy.csv')
         assert result == "csv file not found"
+
+    @pytest.mark.it("returns none for empty dataframe")
+    def test_returns_none_for_empty_data_frame(self, s3):
+        s3.put_object(
+            Body="test1, test2, test3",
+            Bucket='totesys-raw-data-000000',
+            Key='test.csv'
+        )
+        result = convert_csv_to_parquet('test.csv')
+
+        assert result == None

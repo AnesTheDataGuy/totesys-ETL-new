@@ -2,8 +2,7 @@ import pytest
 import boto3
 import os
 from moto import mock_aws
-from src.lambda_functions.transform import lambda_handler as transform
-from src.lambda_functions.transform import csvs
+from src.lambda_functions.transform import csvs, lambda_handler as transform
 
 @pytest.fixture(scope="function")
 def aws_credentials():
@@ -40,7 +39,6 @@ context = DummyContext()
 
 
 class TestTransform:
-
     @pytest.mark.it("parquet data lands in the processed bucket")
     def test_transform_lands_data_in_processed_data_bucket(self, s3):
 
@@ -51,19 +49,19 @@ class TestTransform:
                     5,6,7
                     8,9,10""",
                 Bucket='totesys-raw-data-000000',
-                Key=f'/history/YYYY/MM/DD/HH:MM:SS/{csv}'
+                Key=f'history/YYYY/MM/DD/HH:MM:SS/{csv}'
             )
-        expected_pq = {'/history/YYYY/MM/DD/HH:MM:SS//address.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//design.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//currency.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//staff.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//counterparty.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//sales_order.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//department.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//purchase_order.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//payment_type.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//payment.parquet': 0,
-                       '/history/YYYY/MM/DD/HH:MM:SS//transaction.parquet': 0}
+        expected_pq = {'history/YYYY/MM/DD/HH:MM:SS//address.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//design.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//currency.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//staff.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//counterparty.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//sales_order.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//department.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//purchase_order.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//payment_type.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//payment.parquet': 0,
+                       'history/YYYY/MM/DD/HH:MM:SS//transaction.parquet': 0}
 
         res = transform(event, context)
         proc_data_bucket_objects = s3.list_objects(Bucket="totesys-processed-data-000000")['Contents']
@@ -72,3 +70,22 @@ class TestTransform:
             assert parquet['Key'] in expected_pq
 
         assert res == {"time_prefix": "YYYY/MM/DD/HH:MM:SS/"}
+
+
+    @pytest.mark.it("empty csv files (headers only) are skipped")
+    def test_transform_with_empty_csv(self, s3):
+        for csv in csvs:
+            s3.put_object(Body="test1, test2, test3",
+                          Bucket='totesys-raw-data-000000',
+                          Key=f'history/YYYY/MM/DD/HH:MM:SS/{csv}'
+                          )
+        transform(event,context)
+
+        processed_data_bucket = s3.list_objects(Bucket="totesys-processed-data-000000")
+
+        assert 'Contents' not in processed_data_bucket.keys()
+
+
+    @pytest.mark.it("failed to upload files")
+    def test_transform_failed_to_upload_file(self,s3):
+        pass

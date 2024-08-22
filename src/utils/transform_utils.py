@@ -62,7 +62,7 @@ def convert_csv_to_parquet(csv):
     raw_data_bucket, _ = finds_data_buckets()
     try:
         res = s3_client.get_object(
-            Bucket=raw_data_bucket, Key=f"{csv}"
+            Bucket=raw_data_bucket, Key=f"history/YYYY/MM/DD/HH:MM:SS/{csv}"
         )  # change f string for when we finalise extract structure
         csv_data = res["Body"].read().decode("utf-8")
     except ClientError:
@@ -70,6 +70,9 @@ def convert_csv_to_parquet(csv):
 
     data_buffer_csv = StringIO(csv_data)
     df = pl.read_csv(data_buffer_csv)
+
+    if df.is_empty():
+        return None
 
     data_buffer_parquet = BytesIO()
     parquet = df.write_parquet(data_buffer_parquet)

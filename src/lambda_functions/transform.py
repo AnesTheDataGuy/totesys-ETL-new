@@ -3,6 +3,9 @@ import logging
 from botocore.exceptions import ClientError
 from src.utils.transform_utils import finds_data_buckets, convert_csv_to_parquet
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger()
+
 csvs = [
     "sales_order.csv",
     "design.csv",
@@ -30,24 +33,55 @@ def lambda_handler(event, context):
     Returns:
         dict: dictionary with time prefix to be used in the load function
     """
+
+    logger.info("Lambda function invoked.")
+    logger.info(f"Event received: {event}")
+
+    uploaded_files = []
+    failed_files = []
+
     s3_client = boto3.client("s3")
 
     prefix = event["time_prefix"]
+    logger.info(f"Processing files with time prefix: {prefix}")
 
     _, processed_data_bucket = finds_data_buckets()
+    logger.info(f"Found processed data bucket: {processed_data_bucket}")
 
     for file in csvs:
-        parquet = convert_csv_to_parquet(file)
-        file = file[:-4]
+        logger.info(f"Starting processing for file: {file}")
         try:
-            s3_client.put_object(
-                Body=parquet,
-                Bucket=processed_data_bucket,
-                Key=f"/history/{prefix}/{file}.parquet",
-            )
+            parquet = convert_csv_to_parquet(file)
+            file = file[:-4]
+
+            if parquet is None:
+                logger.info("{file} only contains headers, continue....")
+                continue
+            else:
+                logger.info(f"{file} converted to parquet")
+
+                s3_client.put_object(
+                    Body=parquet,
+                    Bucket=processed_data_bucket,
+                    Key=f"history/{prefix}/{file}.parquet",
+                )
+                logger.info(f"Successfully uploaded {file}.parquet to {processed_data_bucket}")
+                uploaded_files.append(file)
 
         except ClientError as e:
-            logging.error(e)
-            return "Failed to upload file"
+            logger.error(f"Failed to upload file {file}: {e}")
+            failed_files.append(file)
+
+    if failed_files:
+        logger.error(f"Failed to upload the following files: {failed_files}")
+        return {
+            "time_prefix": prefix,
+            "status": "Some uploads failed",
+            "uploaded_files" : uploaded_files,
+            "failed_files": failed_files
+        }
+    
+    logger.info("All files processed and uploaded successfully.")
+    logger.info("Lambda function completed.")
 
     return {"time_prefix": prefix}
