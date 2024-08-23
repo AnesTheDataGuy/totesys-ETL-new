@@ -16,6 +16,10 @@ env_file = find_dotenv(
 )  # loads .env.testing or .env.development
 load_dotenv(env_file)
 
+#for debugging
+CSV_REGEX = r">\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)"
+
+
 AWS_SECRET_DB_CRED = os.getenv("AWS_SECRET_TOTESYS_DB")
 HISTORY_PATH = "/history/" 
 SOURCE_PATH = "/source/"
@@ -130,8 +134,9 @@ def query_db(dt_name, conn):
 
 def create_and_upload_csv(data, client, bucket, tablename, first_call):
     """
-    Converts a table from a database into a CSV file and uploads that CSV file to a
-    specified bucket, raising an exception if there's an error in uploading the file.
+    Converts a table from a database into a CSV file and uploads that CSV file to either:
+    - first_call == True ? bucket/source as *_new.csv , and history/y/m/d/hh:mm:ss/*_differences.csv
+    - first_call == False ? lamba ephemeral storage/tmp as *.csv
     The data argument is a list of lists.
     """
     file_to_save = StringIO()
@@ -153,13 +158,7 @@ def create_and_upload_csv(data, client, bucket, tablename, first_call):
         else:
             with open(f'/tmp/{tablename}_new.csv', 'wb') as csvfile:
                 csvfile.write(file_to_save)
-            
-            """
-            client.put_object(
-                Body=file_to_save,
-                Bucket=bucket,
-                Key=f"/tmp/{tablename}_new.csv",
-            )"""
+        
     except ClientError as e:
         logging.error(e)
         raise Exception("Failed to upload file")
@@ -178,7 +177,6 @@ def compare_csvs(dt_name):
     csv file containing all changes to database (if csv1 and csv2 are not equal)
     None (if csv1 and csv2 are equal)
     """
-    # print(f"\n ><><><>< {os.listdir('/tmp')}")
     csv_prev = f"/tmp/{dt_name}.csv"
     csv_new = f"/tmp/{dt_name}_new.csv"
 
@@ -190,15 +188,13 @@ def compare_csvs(dt_name):
             header.append(row)
             break
 
-    regex = r">\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)"
-
     diff_output = subprocess.run(
         ["diff", csv_prev, csv_new], capture_output=True
     ).stdout
     differences = subprocess.run(["echo", diff_output], capture_output=True)
 
     print(f"\n differences: {differences}")
-    changes_to_table = re.findall(regex, differences.stdout.decode())
+    changes_to_table = re.findall(CSV_REGEX, differences.stdout.decode())
     print(f"\nCHANGES TO TABLE: {changes_to_table}")
     filepath = f"{dt_name}_differences.csv"
     with open(f"/tmp/{filepath}", "w", newline="") as f:
