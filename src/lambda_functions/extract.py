@@ -1,14 +1,49 @@
 import boto3
 import logging
 import os
-from pg8000.native import Error
-from src.utils.extract_utils import get_secret, create_and_upload_to_bucket, compare_csvs
-from src.utils.extract_utils import create_time_prefix_for_file, connect_to_bucket, connect_to_db
+from datetime import datetime as dt
+from pg8000.native import Connection, Error
+from src.utils.extract_utils import *
+
+"""
+RAW DATA BUCKET STRUCTURE:
+source/
+├─ address_new.csv
+├─ counterparty_new.csv
+├─ currency_new.csv
+├─ department_new.csv
+├─ design_new.csv
+├─ payment_new.csv
+├─ payment_type_new.csv
+├─ purchase_order_new.csv
+├─ sales_order_new.csv
+├─ staff_new.csv
+├─ transaction_new.csv
+history/
+├─ year/
+│  ├─ month/
+│  │  ├─ day/
+│  │  │  ├─ hh:mm:ss/
+│  │  │  │  ├─ address_differences.csv 
+│  │  │  │  ├─ counterparty_differences.csv 
+│  │  │  │  ├─ currency_differences.csv 
+│  │  │  │  ├─ department_differences.csv
+│  │  │  │  ├─ design_differences.csv
+│  │  │  │  ├─ payment_differences.csv
+│  │  │  │  ├─ payment_type_differences.csv
+│  │  │  │  ├─ purchase_order_differences.csv
+│  │  │  │  ├─ sales_order_differences.csv
+│  │  │  │  ├─ staff_differences.csv
+│  │  │  │  ├─ transaction_differences.csv
+"""
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-data_tables = [
+SOURCE_PATH = "/source/"
+SOURCE_FILE_SUFFIX = "_new"
+HISTORY_PATH = "/history/"
+DATA_TABLES = [
     "sales_order",
     "design",
     "currency",
@@ -22,101 +57,63 @@ data_tables = [
     "transaction",
 ]
 
-"""
-
-history/year/month/day/hh:mm:s/files with no prefix
-
-first time ->
-    write source csv
-
-then ->
-    compare db query to source csv.
-    write history csv
-    We dont want to overwrite the old csv >>>>>>>>>>>>>>>>>>>>> overwrite (refresh) source csv
-
-
-bucket:
-    /source/
-            sales_order_source.csv
-            design_source.csv
-            ...
-    /history/
-            2024/08/16/hh_mm_ss
-    OR
-
-    /history/
-            sales_order/
-            desing_source
-
-    OR
-    sales_order/
-            source/
-                    sales_order/
-                    design_source/
-                    ...
-            history/
-                    sales_order/
-                    design_source/
-"""
-
-
 def lambda_handler(event, context):
     """
-    Wrapper function that allows us to run our utils functions together, and allows
-    us to invoke them all in AWS
+    Wrapper function that runs utils functions together.
+    This function establishes a connection to the Totesys online database 
+    using credentials obtained from an AWS secret.
+    It retrieves the latest data tables and compares them with previously 
+    stored versions (found in the /source/ directory with an "_original" suffix).
+    The differences between the current and previous tables are saved 
+    as CSV files, organized in a directory structure based on 
+    the current date and time (year/month/day/hh:mm:ss).
+    Finally, the existing CSV files in the /source/ directory, 
+    which hold the complete data tables, are updated with the latest content.
     """
+
     db_credentials = get_secret()
     s3_client = boto3.client("s3")
     raw_data_bucket = connect_to_bucket(s3_client)
-    time_prefix = create_time_prefix_for_file()
+    time_path = create_time_based_path() 
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
+
     if bucket_content.get("Contents"):
         bucket_files = [dict_["Key"] for dict_ in bucket_content["Contents"]]
     else:
         bucket_files = []
+
     try:
         conn = connect_to_db(db_credentials)
-        for data_table_name in data_tables:
-            print()
-            query = f"SELECT column_name FROM information_schema.columns WHERE table_name = '{data_table_name}';"
-            column_names = conn.run(query)
-            header = []
-            for column in column_names:
-                header.append(column[0])
+        for data_table_name in DATA_TABLES:
+            file_data = query_db(data_table_name,conn)
+            first_call_bool = not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files
+            create_and_upload_csv(
+                    file_data, s3_client, raw_data_bucket, data_table_name, first_call_bool)          
+            
+            if not first_call_bool:
 
-            query = f"SELECT * FROM {data_table_name};"
-            data_rows = conn.run(query)
-            file_data = [header] + data_rows
+                #save a copy of _new from /source to /tmp, where it can be manipulated by the lambda function
+                s3_client.download_file(Bucket=raw_data_bucket, 
+                Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv',
+                Filename=f'/tmp/{data_table_name}.csv')
 
-            if f"/source/{data_table_name}/{data_table_name}_original.csv" not in bucket_files:
-                create_and_upload_to_bucket(
-                    file_data, s3_client, raw_data_bucket, data_table_name, True
-                )
-            else:
-                print("\n _ORIGINAL CSV FILES FOUND")
-                create_and_upload_to_bucket(
-                    file_data, s3_client, raw_data_bucket, data_table_name, False
-                )
-                # file_buffer = StringIO()
-                # csv.writer(file_buffer).writerows(file_data)
-                s3_client.download_file(Bucket=raw_data_bucket,
-                                        Key=f'/source/{data_table_name}/{data_table_name}_original.csv',
-                                        Filename=f'/tmp/{data_table_name}.csv')
+                changes_csv = compare_csvs(data_table_name)
 
-                s3_client.download_file(Bucket=raw_data_bucket,
-                                        Key=f'/source/{data_table_name}/{data_table_name}_new.csv',
-                                        Filename=f'/tmp/{data_table_name}_new.csv')
-
-                changes_csv = compare_csvs(f'/source/{data_table_name}/{data_table_name}_original.csv', f'/source/{data_table_name}/{data_table_name}_new.csv')
-
-                s3_client.upload_file(Bucket=raw_data_bucket, Filename=f"/tmp/{changes_csv}",
-                                      Key=f'/history/{data_table_name}/{changes_csv}')
-
+                #save the _differences file to history   
+                s3_client.upload_file(Bucket=raw_data_bucket,
+                                      Filename=f"/tmp/{changes_csv}",
+                                      Key=f'{HISTORY_PATH}{create_time_based_path()}{changes_csv}'              
+                                      )
+                
+                #replace /source/*_new with /tmp/*_new
+                s3_client.upload_file(Bucket=raw_data_bucket,
+                                      Filename=f'/tmp/{data_table_name}_new.csv',
+                                      Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv'              
+                                      )
+             
+                #removing the temporary files
                 os.remove(f'/tmp/{data_table_name}.csv')
                 os.remove(f'/tmp/{data_table_name}_new.csv')
-                # print(f"\n FILE BUFFER: {file_buffer}")
-
-                # file_to_save = bytes(file_to_save.getvalue(), encoding="utf-8")
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
 
@@ -128,4 +125,4 @@ def lambda_handler(event, context):
         if "conn" in locals():
             conn.close()
 
-    return {"time_prefix": time_prefix}
+    return {"time_path": time_path}
