@@ -74,7 +74,7 @@ def lambda_handler(event, context):
     db_credentials = get_secret()
     s3_client = boto3.client("s3")
     raw_data_bucket = connect_to_bucket(s3_client)
-    #time_path = create_time_based_path() do we want to return the timepath for any reason?
+    time_path = create_time_based_path() 
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
 
     if bucket_content.get("Contents"):
@@ -125,4 +125,4 @@ def lambda_handler(event, context):
         if "conn" in locals():
             conn.close()
 
-    #return {"time_path": time_path}
+    return {"time_path": time_path}

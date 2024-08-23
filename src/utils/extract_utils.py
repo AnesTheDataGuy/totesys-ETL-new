@@ -9,18 +9,10 @@ from datetime import datetime as dt
 from pg8000.native import Connection, Error
 from botocore.exceptions import ClientError
 from io import StringIO
-from dotenv import load_dotenv, find_dotenv
-
-env_file = find_dotenv(
-    f'.env.{os.getenv("ENV")}'
-)  # loads .env.testing or .env.development
-load_dotenv(env_file)
 
 #for debugging
 CSV_REGEX = r">\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)"
 
-
-AWS_SECRET_DB_CRED = os.getenv("AWS_SECRET_TOTESYS_DB")
 HISTORY_PATH = "/history/" 
 SOURCE_PATH = "/source/"
 SOURCE_FILE_SUFFIX = "_new"
@@ -64,7 +56,7 @@ def create_time_based_path():
     return f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
 
-def get_secret(secret_name=AWS_SECRET_DB_CRED):
+def get_secret(secret_name="totesys-credentials"):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
     based on argument given, with the default argument set to the database credentials.
