@@ -89,11 +89,14 @@ def lambda_handler(event, context):
             file_data = query_db(data_table_name,conn)
 
             #create _original file if doesn't exist, or create _new file if it does
+            #print(f"\n >>> LAMBDA: SEARCHING {SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv")
             if not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files:
+                #print("NOT FOUND")
                 create_and_upload_csv(
                     file_data, s3_client, raw_data_bucket, data_table_name, True
                 ) # --> *_new.csv file in /source and *_differences.csv in /history/../../../
             else:
+                #print(f"\n >>> LAMBDA: FOUND {SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv")
                 create_and_upload_csv(
                     file_data, s3_client, raw_data_bucket, data_table_name, False
                 ) # --> *_new.csv file in /tmp

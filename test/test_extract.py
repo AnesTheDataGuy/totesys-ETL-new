@@ -4,10 +4,12 @@ import os
 import shutil
 import json
 from moto import mock_aws
-from src.lambda_functions.extract import lambda_handler, get_secret
+from unittest.mock import patch
+from src.lambda_functions.extract import lambda_handler
 from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
 import csv
+from pprint import pprint
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
@@ -18,42 +20,12 @@ PG_DATABASE = os.getenv("PG_DATABASE")
 PG_HOST = os.getenv("PG_HOST")
 PG_PORT = os.getenv("PG_PORT")
 
-year = dt.now().year
-month = dt.now().month
-day = dt.now().day
-hour = dt.now().hour
-if len(str(hour)) == 1:
-    hour = "0" + str(hour)
-minute = dt.now().minute
-if len(str(minute)) == 1:
-    minute = "0" + str(minute)
-second = dt.now().second
-if len(str(second)) == 1:
-    second = "0" + str(second)
+SOURCE_PATH = "/source/"
+SOURCE_FILE_SUFFIX = "_new"
+HISTORY_PATH = "/history/"
+HISTORY_FILE_SUFFIX = "_differences"
 
-table_data = [
-    "payment_type.csv",
-    "transaction.csv",
-    "currency.csv",
-    "payment.csv",
-    "sales_order.csv",
-    "design.csv",
-    "address.csv",
-    "counterparty.csv",
-    "staff.csv",
-    "department.csv",
-    "purchase_order.csv",
-]
-# data_dir = "./data/table_data/"
-# check_file_dir = data_dir + "check_s3_file/"
-# #    if os.path.isfile(f'{data_dir}{table}'):
-# #        os.remove(f'{data_dir}{table}')
-
-# if os.path.isdir(data_dir):
-#     shutil.rmtree(data_dir)
-
-# os.makedirs(data_dir)
-# os.mkdir(check_file_dir)
+MOCK_BUCKET_NAME = "totesys-raw-data-000000"
 
 """
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -83,7 +55,7 @@ def s3(aws_credentials):
     with mock_aws():
         s3 = boto3.client("s3")
         s3.create_bucket(
-            Bucket="totesys-raw-data-000000",
+            Bucket=MOCK_BUCKET_NAME,
             CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
         )
         yield s3
@@ -96,6 +68,24 @@ def s3_no_buckets(aws_credentials):
         s3_nobuckets = boto3.client("s3")
         yield s3_nobuckets
 
+@pytest.fixture(scope="function")
+def s3_wfile_in_source(aws_credentials):
+    """Mocked S3 client with a *_new.csv file in /source."""
+    with mock_aws():
+        s3 = boto3.client("s3")
+        s3.create_bucket(
+            Bucket=MOCK_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
+        )
+        s3.put_object(
+            Body="""staff_id,first_name,last_name,department_id,email_address,created_at,last_updated
+                1,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+                2,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00""",
+            Bucket=MOCK_BUCKET_NAME,
+            Key=f"{SOURCE_PATH}staff{SOURCE_FILE_SUFFIX}.csv",
+        )
+
+        yield s3
 
 @pytest.fixture(scope="function")
 def secretsmanager(aws_credentials):
@@ -136,7 +126,8 @@ class DummyContext:  # Dummy context class used for testing
 
 
 class TestLambdaHandler:
-    # @pytest.mark.skip()
+
+    #@pytest.mark.skip()
     @pytest.mark.it("Raise exception if raw data bucket is not found")
     def test_bucket_does_not_exist(self, s3_no_buckets, secretsmanager):
         event = {}
@@ -144,13 +135,16 @@ class TestLambdaHandler:
         with pytest.raises(Exception):
             lambda_handler(event, context)
 
-    # @pytest.mark.skip()
+
+    #@pytest.mark.skip()
     @pytest.mark.it("script succesfully connects to database")
     def test_succesfully_connects_to_database(self, s3, secretsmanager):
         event = {}
         context = DummyContext()
         assert not isinstance(lambda_handler(event, context), Exception)
 
+
+    #@pytest.mark.skip()
     @pytest.mark.it(
         "returns exception when failing to connect to database due to wrong credentials"
     )
@@ -160,53 +154,82 @@ class TestLambdaHandler:
         with pytest.raises(Exception):
             lambda_handler(event, context)
 
-    
+
+    #@pytest.mark.skip()
     @pytest.mark.it(
         "Successfully uploads csv files to /source and /history/timepath when /source is empty"
     )
-    def test_uploads_csv_to_source_and_history_first_call(self, s3, secretsmanager):
-        # UP TO HERE! WE HAVE TO MOCK DATETIME TO CREATE HISTORY DIRS
-        path_source = "source/"
-        path_history ="history/"
-        suffix_source = "_new" 
-        suffix_history = "_differences"
+    @patch('src.utils.extract_utils.dt')
+    def test_uploads_csv_to_source_and_history_first_call(self, patched_dt, s3, secretsmanager):
+        patched_dt.now.return_value = dt(2014,3,10)
+        patched_dt.side_effect = lambda *args, **kw: dt(*args, **kw)
+        
+        path_history =f"{HISTORY_PATH}2014/03/10/00:00:00/"
         event = {}
         context = DummyContext()
         lambda_handler(event, context)
-        listing = s3.list_objects_v2(Bucket="totesys-raw-data-000000")
-        assert len(listing["Contents"]) == 11*2
+        listing = s3.list_objects_v2(Bucket=MOCK_BUCKET_NAME)
+        assert len(listing['Contents']) == 11*2
         expected_files_in_source = {
-            f"{path_source}sales_order{suffix_source}.csv": 0,
-            f"{path_source}design{suffix_source}.csv": 0,
-            f"{path_source}currency{suffix_source}.csv": 0,
-            f"{path_source}staff{suffix_source}.csv": 0,
-            f"{path_source}counterparty{suffix_source}.csv": 0,
-            f"{path_source}address{suffix_source}.csv": 0,
-            f"{path_source}department{suffix_source}.csv": 0,
-            f"{path_source}purchase_order{suffix_source}.csv": 0,
-            f"{path_source}payment_type{suffix_source}.csv": 0,
-            f"{path_source}payment{suffix_source}.csv": 0,
-            f"{path_source}transaction{suffix_source}.csv": 0,
+            f"{SOURCE_PATH}sales_order{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}design{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}currency{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}staff{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}counterparty{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}address{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}department{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}purchase_order{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}payment_type{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}payment{SOURCE_FILE_SUFFIX}.csv": 0,
+            f"{SOURCE_PATH}transaction{SOURCE_FILE_SUFFIX}.csv": 0,
         }
         expected_files_in_history = {
-            f"{path_history}sales_order{suffix_history}.csv": 0,
-            f"{path_history}design{suffix_history}.csv": 0,
-            f"{path_history}currency{suffix_history}.csv": 0,
-            f"{path_history}staff{suffix_history}.csv": 0,
-            f"{path_history}counterparty{suffix_history}.csv": 0,
-            f"{path_history}address{suffix_history}.csv": 0,
-            f"{path_history}department{suffix_history}.csv": 0,
-            f"{path_history}purchase_order{suffix_history}.csv": 0,
-            f"{path_history}payment_type{suffix_history}.csv": 0,
-            f"{path_history}payment{suffix_history}.csv": 0,
-            f"{path_history}transaction{suffix_history}.csv": 0,
+            f"{path_history}sales_order{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}design{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}currency{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}staff{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}counterparty{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}address{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}department{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}purchase_order{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}payment_type{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}payment{HISTORY_FILE_SUFFIX}.csv": 0,
+            f"{path_history}transaction{HISTORY_FILE_SUFFIX}.csv": 0,
         }
-        for i in range(len(listing)):
-            assert f'{listing["Contents"][i]["Key"]}' in expected_files_in_source
-            assert f'{listing["Contents"][i]["Key"]}' in expected_files_in_history
+        for i in range(len(listing['Contents'])):
+            assert (
+                f"{listing['Contents'][i]['Key']}" in expected_files_in_source or
+                f"{listing['Contents'][i]['Key']}" in expected_files_in_history )
 
-    # @pytest.mark.it("Successfully compares new db queries with _original.csv")
-    # def test_compares_csv_to_original(self, s3, secretsmanager):
-    #     event = {}
-    #     context = DummyContext()
-    #     assert not lambda_handler(event, context)
+
+    #@pytest.mark.skip()
+    @pytest.mark.it(
+        "Overwrite csv file to in /source after files have been compared and differences stored in /history"
+    )
+    def test_overwrites_new_csv_in_source_dir(self, s3_wfile_in_source, secretsmanager):
+        prev_file =  s3_wfile_in_source.get_object(
+            Bucket=MOCK_BUCKET_NAME,
+            Key=f"/source/staff{SOURCE_FILE_SUFFIX}.csv")
+        event = {}
+        context = DummyContext()
+        lambda_handler(event, context)
+        new_file =  s3_wfile_in_source.get_object(
+            Bucket=MOCK_BUCKET_NAME,
+            Key="/source/staff_new.csv")
+        assert new_file['ContentLength'] > prev_file['ContentLength']
+
+
+    @pytest.mark.it(
+        "Mase sure that files in /tmp folder have been deleted"
+    )
+    def test_deletes_files_in_tmp_folder(self, s3_wfile_in_source, secretsmanager):
+        event = {}
+        context = DummyContext()
+        lambda_handler(event, context)
+
+        tmp_content = [
+            filename
+            for filename in os.listdir("/tmp")
+        ]
+        assert 'staff.csv' not in tmp_content
+        assert f'staff{SOURCE_FILE_SUFFIX}.csv' not in tmp_content
