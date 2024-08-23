@@ -1,4 +1,9 @@
-from src.utils.load_utils import *
+from src.utils.load_utils import (
+    find_processed_data_bucket, 
+    get_secret, 
+    connect_to_db,
+    convert_parquet_to_df
+)
 import boto3
 import logging
 import csv
@@ -31,15 +36,25 @@ parquet_tables = [
 
 
 def lambda_handler(event, context):
+
+    ## find latest timestamped folder in history folder 
+    ## using 'time_prefix'
+    ## convert parquet to dataframe
+    ## make changes in line with star schema
+    ## convert back to parquet
     credentials = get_secret("totesys_data_warehouse_credentials")
     s3_client = boto3.client("s3")
     time_prefix = event['time_prefix']
     table_dfs = {}
 
     try:
-        conn = connect_to_db()
+        conn = connect_to_db(credentials)
         for parquet in parquet_tables:
-            table_dfs[parquet] = convert_parquet_to_df(parquet)
-        
+            file_path = f'/history/{time_prefix}/{parquet}'
+            table_dfs[parquet] = convert_parquet_to_df(file_path)
+            # call insert_df_into_psql here
+
     finally:
         conn.close()
+
+lambda_handler({'time_prefix': '2024_8_21_15:15:14'}, 0)

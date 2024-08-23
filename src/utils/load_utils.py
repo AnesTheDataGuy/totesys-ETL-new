@@ -3,9 +3,11 @@ import logging
 from io import StringIO, BytesIO
 import polars as pl
 from botocore.exceptions import ClientError
-from io import BytesIO
+from io import BytesIO, StringIO
 from pg8000.native import Connection
 import json
+import pyarrow
+from src.utils.queries import star_schema_queries, parquet_to_sql_queries
 
 
 def find_processed_data_bucket():
@@ -99,5 +101,46 @@ def convert_parquet_to_df(parquet):
 
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
+    # df = pl.read_parquet(res)
 
     return df
+
+def create_all_tables():
+    try:
+        credentials = get_secret("totesys_data_warehouse_credentials")
+        db = connect_to_db(credentials)
+        for query in parquet_to_sql_queries:
+            db.run(query)
+
+    finally:
+        if "db" in locals():
+            db.close()
+
+def insert_df_into_psql(df, table_name):
+    '''
+    This function should iterate through a dataframe and 
+    insert each row into a psql database using SQL queries. 
+    
+    Arguments:
+        - Dataframe to be uploaded to SQL
+
+    Returns: 
+        - Message indicating successful upload
+    '''
+    try:
+    # connect to Date Warehouse
+        credentials = get_secret("totesys_data_warehouse_credentials")
+        db = connect_to_db(credentials)
+    # create table for parquet
+        query = f'CREATE TABLE "{table_name}" '
+    # Have a for loop that iterates through rows of dataframes
+        for row in df.iter_rows():
+            query = '''
+                INSERT INTO
+                '''
+            db.run()
+        
+    # Upload each row using INSERT statement into Data Warehouse
+    finally:
+        if "db" in locals():
+            db.close()

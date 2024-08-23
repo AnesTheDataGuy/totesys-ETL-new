@@ -44,7 +44,7 @@ def lambda_handler(event, context):
             s3_client.put_object(
                 Body=parquet,
                 Bucket=processed_data_bucket,
-                Key=f"/history/{prefix}/{file}.parquet",
+                Key=f"history/{prefix}/{file}.parquet",
             )
 
         except ClientError as e:

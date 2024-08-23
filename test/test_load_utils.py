@@ -6,13 +6,16 @@ from src.utils.load_utils import (
     find_processed_data_bucket, 
     get_secret, 
     connect_to_db,
-    convert_parquet_to_df
+    convert_parquet_to_df,
+    create_all_tables,
+    insert_df_into_psql
 )
 from pg8000.native import Connection
 from dotenv import load_dotenv, find_dotenv
 import json
 import polars as pl
 from io import BytesIO
+from unittest.mock import patch
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
@@ -91,10 +94,50 @@ def secretsmanager(aws_credentials):
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys_datawarehouse_credentials", SecretString=json.dumps(database_dict)
+            Name="totesys_data_warehouse_credentials", SecretString=json.dumps(database_dict)
         )
         yield secretsmanager
 
+
+@pytest.fixture(scope="function")
+def db():
+    '''
+    Connects to test SQL database
+    '''
+    conn = Connection(
+        user=PG_USER,
+        password=PG_PASSWORD,
+        host=PG_HOST,
+        database=PG_DATAWAREHOUSE,
+        port=PG_PORT
+    )
+    return conn
+
+@pytest.fixture(scope="function")
+def run_seed(db):
+    '''Runs seed before starting tests, yields, runs tests,
+       then closes connection to db'''
+    db.run("DROP TABLE IF EXISTS sales_order;")
+    db.run("DROP TABLE IF EXISTS design;")
+    db.run("DROP TABLE IF EXISTS currency;")
+    db.run("DROP TABLE IF EXISTS staff;")
+    db.run("DROP TABLE IF EXISTS counterparty;")
+    db.run("DROP TABLE IF EXISTS address;")
+    db.run("DROP TABLE IF EXISTS department;")
+    db.run("DROP TABLE IF EXISTS purchase_order;")
+    db.run("DROP TABLE IF EXISTS payment_type;")
+    db.run("DROP TABLE IF EXISTS payment;")
+    db.run("DROP TABLE IF EXISTS transaction;")
+    db.run("DROP TABLE IF EXISTS fact_sales_order;")
+    db.run("DROP TABLE IF EXISTS dim_date;")
+    db.run("DROP TABLE IF EXISTS dim_staff;")
+    db.run("DROP TABLE IF EXISTS dim_location;")
+    db.run("DROP TABLE IF EXISTS dim_currency;")
+    db.run("DROP TABLE IF EXISTS dim_design;")
+    db.run("DROP TABLE IF EXISTS dim_counterparty;")
+    # seed(**data)
+    yield
+    db.close()
 
 class TestFindBucket:
 
@@ -114,7 +157,7 @@ class TestGetSecret:
             get_secret(secret_name)
 
     def test_get_secret_runs_correctly(self, secretsmanager):
-        secret_name = "totesys_datawarehouse_credentials"
+        secret_name = "totesys_data_warehouse_credentials"
         credentials = get_secret(secret_name)
         expected = {
             "user": PG_USER,
@@ -129,7 +172,7 @@ class TestGetSecret:
 class TestConnectToDB:
 
     def test_connect_to_db(self, secretsmanager ):
-        secret_name = "totesys_datawarehouse_credentials"
+        secret_name = "totesys_data_warehouse_credentials"
         credentials = get_secret(secret_name)
         assert not isinstance(connect_to_db(credentials), Exception)
 
@@ -149,5 +192,28 @@ class TestConvertParquetToDF:
     def test_function_encounters_client_error_when_parquet_is_not_found(self, s3_with_parquet):
         parquet_file = "invalid_parquet.parquet"
         df = convert_parquet_to_df(parquet_file)
-        print(df)
         assert df.startswith('Failed to get parquet file:')
+
+class TestCreateAllTables:
+
+    @patch('src.utils.load_utils.get_secret')
+    def test_tables_are_created(self, mock_get_secret, run_seed):
+        mock_get_secret.return_value = {
+            'user':PG_USER,
+            'password':PG_PASSWORD,
+            'host':PG_HOST,
+            'database':PG_DATAWAREHOUSE,
+            'port':PG_PORT
+        }
+        create_all_tables()
+        result = db.run('SELECT table_name FROM information_schema.tables')
+        print("db" in locals())
+        print()
+
+
+class TestInsertDFIntoPSQL:
+
+    def test_insert_df_uploads_one_row(self, secretsmanager, s3_with_parquet, db, run_seed):
+        parquet_file = 'test_parquet.parquet'
+        df = convert_parquet_to_df(parquet_file)
+        assert insert_df_into_psql(df) == f'Succesfully inserted {parquet_file} into data warehouse'
