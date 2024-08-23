@@ -1,30 +1,28 @@
 import pytest
 import boto3
 import os
-import shutil
 import json
 from moto import mock_aws
 from unittest.mock import patch
 from src.lambda_functions.extract import lambda_handler
 from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
-import csv
-from pprint import pprint
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
 
+# env variables
 PG_USER = os.getenv("PG_USER")
 PG_PASSWORD = os.getenv("PG_PASSWORD")
 PG_DATABASE = os.getenv("PG_DATABASE")
 PG_HOST = os.getenv("PG_HOST")
 PG_PORT = os.getenv("PG_PORT")
 
+#const
 SOURCE_PATH = "/source/"
 SOURCE_FILE_SUFFIX = "_new"
 HISTORY_PATH = "/history/"
 HISTORY_FILE_SUFFIX = "_differences"
-
 MOCK_BUCKET_NAME = "totesys-raw-data-000000"
 
 """
@@ -59,7 +57,6 @@ def s3(aws_credentials):
             CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
         )
         yield s3
-
 
 @pytest.fixture(scope="function")
 def s3_no_buckets(aws_credentials):
@@ -168,8 +165,7 @@ class TestLambdaHandler:
         event = {}
         context = DummyContext()
         lambda_handler(event, context)
-        listing = s3.list_objects_v2(Bucket=MOCK_BUCKET_NAME)
-        assert len(listing['Contents']) == 11*2
+     
         expected_files_in_source = {
             f"{SOURCE_PATH}sales_order{SOURCE_FILE_SUFFIX}.csv": 0,
             f"{SOURCE_PATH}design{SOURCE_FILE_SUFFIX}.csv": 0,
@@ -196,6 +192,11 @@ class TestLambdaHandler:
             f"{path_history}payment{HISTORY_FILE_SUFFIX}.csv": 0,
             f"{path_history}transaction{HISTORY_FILE_SUFFIX}.csv": 0,
         }
+
+        listing = s3.list_objects_v2(Bucket=MOCK_BUCKET_NAME)
+
+        assert len(listing['Contents']) == 11*2
+
         for i in range(len(listing['Contents'])):
             assert (
                 f"{listing['Contents'][i]['Key']}" in expected_files_in_source or
@@ -204,18 +205,21 @@ class TestLambdaHandler:
 
     #@pytest.mark.skip()
     @pytest.mark.it(
-        "Overwrite csv file to in /source after files have been compared and differences stored in /history"
+        """Overwrite csv file to in /source after files 
+        have been compared and differences are stored in /history"""
     )
     def test_overwrites_new_csv_in_source_dir(self, s3_wfile_in_source, secretsmanager):
         prev_file =  s3_wfile_in_source.get_object(
             Bucket=MOCK_BUCKET_NAME,
             Key=f"/source/staff{SOURCE_FILE_SUFFIX}.csv")
+        
         event = {}
         context = DummyContext()
         lambda_handler(event, context)
+
         new_file =  s3_wfile_in_source.get_object(
             Bucket=MOCK_BUCKET_NAME,
-            Key="/source/staff_new.csv")
+            Key="/source/staff_new.csv")   
         assert new_file['ContentLength'] > prev_file['ContentLength']
 
 

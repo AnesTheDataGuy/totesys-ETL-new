@@ -3,8 +3,7 @@ import logging
 import os
 from datetime import datetime as dt
 from pg8000.native import Connection, Error
-from botocore.exceptions import ClientError
-from src.utils.extract_utils import create_time_based_path, get_secret, connect_to_bucket, connect_to_db, query_db, create_and_upload_csv, compare_csvs
+from src.utils.extract_utils import *
 
 """
 RAW DATA BUCKET STRUCTURE:
@@ -75,7 +74,7 @@ def lambda_handler(event, context):
     db_credentials = get_secret()
     s3_client = boto3.client("s3")
     raw_data_bucket = connect_to_bucket(s3_client)
-    time_path = create_time_based_path()
+    #time_path = create_time_based_path() do we want to return the timepath for any reason?
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
 
     if bucket_content.get("Contents"):
@@ -87,19 +86,11 @@ def lambda_handler(event, context):
         conn = connect_to_db(db_credentials)
         for data_table_name in DATA_TABLES:
             file_data = query_db(data_table_name,conn)
-
-            #create _original file if doesn't exist, or create _new file if it does
-            #print(f"\n >>> LAMBDA: SEARCHING {SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv")
-            if not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files:
-                #print("NOT FOUND")
-                create_and_upload_csv(
-                    file_data, s3_client, raw_data_bucket, data_table_name, True
-                ) # --> *_new.csv file in /source and *_differences.csv in /history/../../../
-            else:
-                #print(f"\n >>> LAMBDA: FOUND {SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv")
-                create_and_upload_csv(
-                    file_data, s3_client, raw_data_bucket, data_table_name, False
-                ) # --> *_new.csv file in /tmp
+            first_call_bool = not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files
+            create_and_upload_csv(
+                    file_data, s3_client, raw_data_bucket, data_table_name, first_call_bool)          
+            
+            if not first_call_bool:
 
                 #save a copy of _new from /source to /tmp, where it can be manipulated by the lambda function
                 s3_client.download_file(Bucket=raw_data_bucket, 

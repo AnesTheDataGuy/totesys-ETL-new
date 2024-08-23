@@ -9,7 +9,6 @@ from datetime import datetime as dt
 from src.utils.extract_utils import *
 from dotenv import load_dotenv, find_dotenv
 
-
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
 
@@ -20,7 +19,13 @@ PG_HOST = os.getenv("PG_HOST")
 PG_PORT = os.getenv("PG_PORT")
 AWS_SECRET = os.getenv("AWS_SECRET_TOTESYS_DB")
 
-print(f"\n <><><><> {PG_USER} ,{AWS_SECRET}")
+SOURCE_PATH = "/source/"
+SOURCE_FILE_SUFFIX = "_new"
+HISTORY_PATH = "/history/"
+HISTORY_FILE_SUFFIX = "_differences"
+
+MOCK_BUCKET_NAME = "totesys-raw-data-000000"
+
 @pytest.fixture(scope="function")
 def aws_credentials():
     """Mocked AWS Credentials for S3 bucket."""
@@ -31,12 +36,32 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "eu-west-2"
 
 @pytest.fixture(scope="function")
-def s3(aws_credentials):
+def s3_empty_bucket(aws_credentials):
     """Mocked S3 client with raw data bucket."""
     with mock_aws():
         s3 = boto3.client("s3")
         s3.create_bucket(
-            Bucket="totesys-raw-data-000000",
+            Bucket=MOCK_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
+        )
+        yield s3
+
+@pytest.fixture(scope="function")
+def s3_no_buckets(aws_credentials):
+    """Mocked S3 client with no buckets."""
+    with mock_aws():
+        s3_nobuckets = boto3.client("s3")
+        yield s3_nobuckets
+
+@pytest.fixture(scope="function")
+def s3_extra_rows(aws_credentials):
+    """Mocked S3 client with raw data bucket containing 
+    two csv files, the _new version having the same content of
+    the other csv file, plus extra two rows."""
+    with mock_aws():
+        s3 = boto3.client("s3")
+        s3.create_bucket(
+            Bucket=MOCK_BUCKET_NAME,
             CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
         )
         s3.put_object(
@@ -51,7 +76,7 @@ def s3(aws_credentials):
         8,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
         9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         """,
-            Bucket="totesys-raw-data-000000",
+            Bucket=MOCK_BUCKET_NAME,
             Key="test_csv_extra_rows.csv",
         )
 
@@ -68,7 +93,7 @@ def s3(aws_credentials):
         9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
-            Bucket="totesys-raw-data-000000",
+            Bucket=MOCK_BUCKET_NAME,
             Key="test_csv_extra_rows_new.csv",
         )
 
@@ -76,11 +101,13 @@ def s3(aws_credentials):
 
 @pytest.fixture(scope="function")
 def s3_rows_edited(aws_credentials):
-    """Mocked S3 client with raw data bucket."""
+    """Mocked S3 client with raw data bucket containing 
+    two csv files sharing the same content apart from two
+    rows whose content has been modified"""
     with mock_aws():
         s3 = boto3.client("s3")
         s3.create_bucket(
-            Bucket="totesys-raw-data-000000",
+            Bucket=MOCK_BUCKET_NAME,
             CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
         )
         s3.put_object(
@@ -96,7 +123,7 @@ def s3_rows_edited(aws_credentials):
         9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@nc.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
-            Bucket="totesys-raw-data-000000",
+            Bucket=MOCK_BUCKET_NAME,
             Key="test_csv_edited_rows.csv",
         )
 
@@ -113,12 +140,55 @@ def s3_rows_edited(aws_credentials):
         9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         10,Steve,Imposter,1,steve_imposter@nc.com,2023-08-12 10:30:00,2023-08-12 10:30:00
         11,Stevie,Impostah,1,stevie_impostah@kastriot.com,2024-08-12 10:30:00,2024-08-12 10:30:00""",
-            Bucket="totesys-raw-data-000000",
+            Bucket=MOCK_BUCKET_NAME,
             Key="test_csv_edited_rows_new.csv",
         )
 
         yield s3
 
+@pytest.fixture(scope="function")
+def s3_no_dt_changes(aws_credentials):
+    """Mocked S3 client with raw data bucket containing 
+    two csv files sharing the very same content"""
+    with mock_aws():
+        s3 = boto3.client("s3")
+        s3.create_bucket(
+            Bucket=MOCK_BUCKET_NAME,
+            CreateBucketConfiguration={"LocationConstraint": "eu-west-2"},
+        )
+        s3.put_object(
+            Body="""staff_id,first_name,last_name,department_id,email_address,created_at,last_updated
+        1,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        2,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        3,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        4,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        5,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        6,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        7,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        8,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        """,
+            Bucket=MOCK_BUCKET_NAME,
+            Key="test_csv_same_content.csv",
+        )
+
+        s3.put_object(
+            Body="""staff_id,first_name,last_name,department_id,email_address,created_at,last_updated
+        1,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        2,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        3,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        4,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        5,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        6,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        7,John,Doe,1,john.doe@example.com,2023-08-10 08:00:00,2023-08-10 08:00:00
+        8,Jane,Smith,2,jane.smith@example.com,2023-08-11 09:15:00,2023-08-11 09:15:00
+        9,Robert,Johnson,3,robert.johnson@example.com,2023-08-12 10:30:00,2023-08-12 10:30:00
+        """,
+            Bucket=MOCK_BUCKET_NAME,
+            Key="test_csv_same_content_new.csv",
+        )
+
+        yield s3
 
 @pytest.fixture(scope="function")
 def secretsmanager(aws_credentials):
@@ -179,18 +249,20 @@ class TestGetSecret:
         with pytest.raises(Exception):
             get_secret("imposter_steve")
 
+
 class TestConnectToBucket:
 
     @pytest.mark.it("Connect to bucket function returns bucket name")
-    def test_connect_to_bucket_returns_correct_reponse(self, s3):
-        result = connect_to_bucket(s3)
-        assert result == "totesys-raw-data-000000"
+    def test_connect_to_bucket_returns_correct_reponse(self, s3_empty_bucket):
+        result = connect_to_bucket(s3_empty_bucket)
+        assert result == MOCK_BUCKET_NAME
 
     @pytest.mark.it(
             "Connect to bucket function returns exception when no bucket is found")
     def test_connect_to_bucket_returns_exception(self, s3_no_buckets):
         with pytest.raises(Exception):
             connect_to_bucket(s3_no_buckets)
+
 
 class TestConnectToDB:
 
@@ -200,98 +272,109 @@ class TestConnectToDB:
         result = connect_to_db(inp) 
         assert type(result) is Connection
 
+
 class TestQueryDB:
 
     @pytest.mark.it("Return valid csv formatted data (header + table rows)")
     def test_db_query_returns_valid_csv_format_data(self, secretsmanager):
         dt = "currency"
         conn = connect_to_db(get_secret()) 
+
         result = query_db(dt,conn) 
+        
         assert result[0] == ['currency_id', 'currency_code', 'created_at', 'last_updated']
         assert result[6][1] == 'GBP'
+
 
 class TestCreateAndUploadCsv:
 
     @pytest.mark.it("Succesfully saves csv file to both history and source if csv file with same name is not found inside source dir")
     @patch('src.utils.extract_utils.dt')
-    def test_function_saves_csv_in_both_history_and_source_first_call(self, patched_dt, s3):
+    def test_function_saves_csv_in_both_history_and_source_first_call(self, patched_dt, s3_empty_bucket):
         patched_dt.now.return_value = dt(2024,1,1)
         patched_dt.side_effect = lambda *args, **kw: dt(*args, **kw)
-        bucket_name = "totesys-raw-data-000000"
+        bucket_name = MOCK_BUCKET_NAME
         file_name = 'test_file'
-        source_path = "/source/"
-        history_path = "/history/"
         data = [['A', 'B', 'C'], [1,2,3], [4,5,6]]
-        create_and_upload_csv(data, s3, bucket_name, file_name, True)
-        list_objects = s3.list_objects_v2(Bucket="totesys-raw-data-000000")['Contents']
-        assert list_objects[1]['Key'] == source_path + file_name + '_new.csv' 
-        assert list_objects[0]['Key'] == history_path + '2024/01/01/00:00:00/' + file_name + '_differences.csv'
+
+        create_and_upload_csv(data, s3_empty_bucket, bucket_name, file_name, True)
         
-    @pytest.mark.it("Succesfully saves csv file to /tmp if csv file with same name already exists in /source")
-    def test_function_saves_csv_in_temp_after_first_call(self, s3):
-        bucket_name = "totesys-raw-data-000000"
+        list_objects = s3_empty_bucket.list_objects_v2(Bucket=MOCK_BUCKET_NAME)['Contents']
+        
+        assert list_objects[1]['Key'] == f'{SOURCE_PATH}{file_name}{SOURCE_FILE_SUFFIX}.csv' 
+        assert list_objects[0]['Key'] == f'{HISTORY_PATH}2024/01/01/00:00:00/{file_name}{HISTORY_FILE_SUFFIX}.csv'
+
+
+    @pytest.mark.it("Saves csv file to /tmp if csv file with same name already exists in /source")
+    def test_function_saves_csv_in_temp_after_first_call(self, s3_empty_bucket):
+        bucket_name = MOCK_BUCKET_NAME
         dt_name = 'test_dt'
         data = [['A', 'B', 'C'], [1,2,3], [4,5,6]]
-        create_and_upload_csv(data, s3, bucket_name, dt_name, False)
+        
+        create_and_upload_csv(data, s3_empty_bucket, bucket_name, dt_name, False)
+        
         csv_path_list = [
             filename
             for filename in os.listdir("/tmp")
-            if filename.startswith("test_dt_new")
+            if filename.startswith(f'test_dt{SOURCE_FILE_SUFFIX}')
         ]
         assert len(csv_path_list) > 0
         
 
 class TestCompareCsvs:
     # @pytest.mark.skip()
-    @pytest.mark.it("Creates a csv file")
-    def test_file_exists(self, s3, secretsmanager):
-        s3.download_file(
-            "totesys-raw-data-000000",
+    @pytest.mark.it(
+            """Creates a csv file after comparing two csv files in /tmp/""")
+    def test_file_exists(self, s3_extra_rows, secretsmanager):
+        s3_extra_rows.download_file(
+            MOCK_BUCKET_NAME,
             "test_csv_extra_rows.csv",
             "/tmp/test_csv_extra_rows.csv",
         )
-        s3.download_file(
-            "totesys-raw-data-000000",
+        s3_extra_rows.download_file(
+            MOCK_BUCKET_NAME,
             "test_csv_extra_rows_new.csv",
             "/tmp/test_csv_extra_rows_new.csv",
         )
 
         compare_csvs("test_csv_extra_rows")
+        
         csv_path_list = [
             filename
             for filename in os.listdir("/tmp")
             if filename.startswith("test_csv_extra_rows_differences")
         ]
-
         assert len(csv_path_list) > 0
 
-    # @pytest.mark.skip()
+
+    #@pytest.mark.skip()
     @pytest.mark.it(
-        "Creates a csv file containing changes between the two csvs (new dt has extra rows)"
+        """Creates a csv file containing changes between the two csvs
+        (most recent dt has extra rows)"""
     )
-    def test_change_in_datatable_extra_rows(self, s3, secretsmanager):
-        s3.download_file(
-            "totesys-raw-data-000000",
+    def test_change_in_datatable_extra_rows(self, s3_extra_rows, secretsmanager):
+        s3_extra_rows.download_file(
+            MOCK_BUCKET_NAME,
             "test_csv_extra_rows.csv",
             "/tmp/test_csv_extra_rows.csv",
         )
-        s3.download_file(
-            "totesys-raw-data-000000",
+        s3_extra_rows.download_file(
+            MOCK_BUCKET_NAME,
             "test_csv_extra_rows_new.csv",
             "/tmp/test_csv_extra_rows_new.csv",
         )
 
         compare_csvs("test_csv_extra_rows")
+        
         csv_path_list = [
             filename
             for filename in os.listdir("/tmp")
             if filename.startswith("test_csv_extra_rows_differences")
         ]
-        print(csv_path_list)
+
         with open(f"/tmp/{csv_path_list[0]}", "r") as reader:
             next(reader)
             differences = csv.reader(reader)
-
             assert list(differences) == [
                 [
                     "10",
@@ -313,54 +396,61 @@ class TestCompareCsvs:
                 ],
             ]
 
+
     # @pytest.mark.skip()
-    @pytest.mark.it("Writes empty csv file when both csvs are the same")
+    @pytest.mark.it(
+            """Writes empty csv file when both csvs share the very same content""")
     def test_no_change_in_database(self, s3_no_dt_changes, secretsmanager):
+        file_name = "test_csv_same_content"
         s3_no_dt_changes.download_file(
-            "totesys-raw-data-000000",
-            "test_csv_no_diff.csv",
-            "/tmp/test_csv_no_diff.csv",
+            MOCK_BUCKET_NAME,
+            f'{file_name}.csv',
+            f'/tmp/{file_name}.csv',
         )
         s3_no_dt_changes.download_file(
-            "totesys-raw-data-000000",
-            "test_csv_no_diff_new.csv",
-            "/tmp/test_csv_no_diff_new.csv",
+            MOCK_BUCKET_NAME,
+            f'{file_name}{SOURCE_FILE_SUFFIX}.csv',
+            f'/tmp/{file_name}{SOURCE_FILE_SUFFIX}.csv',
         )
 
-        compare_csvs("test_csv_no_diff")
+        compare_csvs("test_csv_same_content")
+        
         csv_path_list = [
             filename
             for filename in os.listdir("/tmp")
-            if filename.startswith("test_csv_no_diff_differences")
+            if filename.startswith("test_csv_same_content_differences")
         ]
         with open(f"/tmp/{csv_path_list[0]}", "r") as reader:
             next(reader)
             differences = csv.reader(reader)
             assert list(differences) == []
 
+
     # @pytest.mark.skip()
     @pytest.mark.it(
-        "Creates a csv file containing changes between the two csvs (new dt has edited rows)"
+        """Creates a csv file containing changes between 
+        the two csvs (new dt has edited rows)"""
     )
     def test_change_in_datatable_edited_rows(self, s3_rows_edited, secretsmanager):
         s3_rows_edited.download_file(
-            "totesys-raw-data-000000",
+            MOCK_BUCKET_NAME,
             "test_csv_edited_rows.csv",
             "/tmp/test_csv_edited_rows.csv",
         )
         s3_rows_edited.download_file(
-            "totesys-raw-data-000000",
+            MOCK_BUCKET_NAME,
             "test_csv_edited_rows_new.csv",
             "/tmp/test_csv_edited_rows_new.csv",
         )
 
         compare_csvs("test_csv_edited_rows")
+        
         csv_path_list = [
             filename
             for filename in os.listdir("/tmp")
             if filename.startswith("test_csv_edited_rows_differences")
         ]
-        print(csv_path_list)
+        
         with open(f"/tmp/{csv_path_list[0]}", "r") as reader:
             next(reader)
             differences = csv.reader(reader)
