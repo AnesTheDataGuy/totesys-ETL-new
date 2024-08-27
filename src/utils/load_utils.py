@@ -9,6 +9,15 @@ import json
 import pyarrow
 from src.utils.queries import star_schema_queries, parquet_to_sql_queries
 
+parquet_tables = [
+    'fact_sales_order.parquet'
+    'dim_staff.parquet',
+    'dim_location.parquet',
+    'dim_counterparty.parquet',
+    'dim_date.parquet',
+    'dim_currency.parquet',
+    'dim_design.parquet',
+]
 
 def find_processed_data_bucket():
     """
@@ -35,7 +44,7 @@ def find_processed_data_bucket():
 
     return processed_data_bucket
 
-def get_secret(secret_name):
+def get_secret(secret_prefix="totesys-credentials"):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
     based on argument given, with the default argument set to the database credentials.
@@ -45,20 +54,22 @@ def get_secret(secret_name):
     host - the url of the server hosting the database
     port - which port we are using to connect with the database
     database - the name of the database that we want to connect to
-    """
+    """   
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager", region_name="eu-west-2")
-
+    
     try:
-        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+        get_secrets_lists_response = client.list_secrets()
+        for secret in get_secrets_lists_response['SecretList']:
+            if secret['Name'].startswith(secret_prefix):
+                secret_name = secret['Name']
+                break
+        secret_value_response = client.get_secret_value(SecretId=secret_name)
     except ClientError as e:
-        # For a list of exceptions thrown, see
-        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         logging.error(e)
         raise Exception(f"Can't retrieve secret due to {e}")
 
-    return json.loads(get_secret_value_response["SecretString"])
-
+    return json.loads(secret_value_response["SecretString"])
 
 def connect_to_db(credentials):
     """
@@ -93,7 +104,7 @@ def convert_parquet_to_df(parquet):
     try:
         res = s3_client.get_object(
             Bucket=processed_data_bucket, Key=parquet
-        )  # change f string for when we finalise extract structure
+        )  
         parquet_data = res["Body"].read()
     except ClientError as e:
         logging.error(f"Failed to get parquet file: {e}")
@@ -105,18 +116,19 @@ def convert_parquet_to_df(parquet):
 
     return df
 
-def create_all_tables():
-    try:
-        credentials = get_secret("totesys_data_warehouse_credentials")
-        db = connect_to_db(credentials)
-        for query in parquet_to_sql_queries:
-            db.run(query)
+# def create_all_tables():
+#     try:
+#         credentials = get_secret("totesys_data_warehouse_credentials")
+#         db = connect_to_db(credentials)
 
-    finally:
-        if "db" in locals():
-            db.close()
+#         for query in parquet_to_sql_queries:
+#             db.run(query)
 
-def insert_df_into_psql(df, table_name):
+#     finally:
+#         if "db" in locals():
+#             db.close()
+
+# def insert_df_into_psql(df, table_name):
     '''
     This function should iterate through a dataframe and 
     insert each row into a psql database using SQL queries. 
@@ -141,6 +153,116 @@ def insert_df_into_psql(df, table_name):
             db.run()
         
     # Upload each row using INSERT statement into Data Warehouse
+    finally:
+        if "db" in locals():
+            db.close()
+
+def populate_fact_sales(time_prefix):
+    '''
+    '''
+    # read fact_sales_order.parquet from bucket
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
+    try:
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket, 
+            Key=f'/history/{time_prefix}/fact_sales_order.parquet'
+        )  
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
+
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
+
+    # reorder columns
+    new_order = [
+    "sales_order_id", "created_date", "created_time",
+    "last_updated_date", "last_updated_time", "staff_id",
+    "counterparty_id", "units_sold", "unit_price",
+    "currency_id", "design_id", "agreed_payment_date",
+    "agreed_delivery_date", "agreed_delivery_location_id"
+    ]
+    df = df.select(new_order)
+    # convert the datetime column to string format
+    df = df.with_columns([
+        pl.col("created_date").cast(pl.String),
+        pl.col("created_time").cast(pl.String),
+        pl.col("last_updated_date").cast(pl.String),
+        pl.col("last_updated_time").cast(pl.String)
+        ])
+    # insert into fact_sales_order table in data warehouse
+    try:
+        credentials = get_secret("totesys-data-warehouse-credentials-")
+        db = connect_to_db(credentials)
+        for row in df.iter_rows():
+            query = f'''INSERT INTO "fact_sales_order"
+                ("sales_order_id", "created_date",
+                "created_time", "last_updated_date", "last_updated_time",
+                "sales_staff_id", "counterparty_id", "units_sold",
+                "unit_price", "currency_id", "design_id",
+                "agreed_payment_date", "agreed_delivery_date",
+                "agreed_delivery_location_id"
+                )
+                VALUES
+                {row}
+                '''
+            db.run(query)
+        return 'SQL database successfully populated'
+    except ClientError as e:
+        raise Exception('Could not update data warehouse')
+    finally:
+        if "db" in locals():
+            db.close()
+
+def populate_dim_staff(time_prefix):
+    '''
+    '''
+    # read dim_staff.parquet from bucket
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
+    try:
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket, 
+            Key=f'/history/{time_prefix}/dim_staff.parquet'
+        )  
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
+
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
+
+    # reorder columns
+    new_order = [
+    "first_name", "last_name", "department_name", "location", "email_address"
+    ]
+    df = df.select(new_order)
+
+    # insert into fact_sales_order table in data warehouse
+    try:
+        credentials = get_secret("totesys-data-warehouse-credentials-")
+        db = connect_to_db(credentials)
+        for row in df.iter_rows():
+            query = f'''INSERT INTO "fact_sales_order"
+                ("sales_order_id", "created_date",
+                "created_time", "last_updated_date", "last_updated_time",
+                "sales_staff_id", "counterparty_id", "units_sold",
+                "unit_price", "currency_id", "design_id",
+                "agreed_payment_date", "agreed_delivery_date",
+                "agreed_delivery_location_id"
+                )
+                VALUES
+                {row}
+                '''
+            db.run(query)
+        return 'SQL database successfully populated'
+    except ClientError as e:
+        raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
             db.close()

@@ -2,13 +2,15 @@ import pytest
 import boto3
 import os
 from moto import mock_aws
+from src.utils.queries import create_fct_sales_order
 from src.utils.load_utils import (
     find_processed_data_bucket, 
     get_secret, 
     connect_to_db,
     convert_parquet_to_df,
     create_all_tables,
-    insert_df_into_psql
+    insert_df_into_psql,
+    populate_fact_sales
 )
 from pg8000.native import Connection
 from dotenv import load_dotenv, find_dotenv
@@ -16,6 +18,8 @@ import json
 import polars as pl
 from io import BytesIO
 from unittest.mock import patch
+import numpy as np
+from datetime import datetime, timedelta
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 load_dotenv(env_file)
@@ -27,6 +31,19 @@ PG_DATAWAREHOUSE = os.getenv("PG_DATAWAREHOUSE")
 PG_HOST = os.getenv("PG_HOST")
 PG_PORT = os.getenv("PG_PORT")
 
+data_tables = [
+    'purchase_order',
+    'payment',
+    'payment_type',
+    'department',
+    'sales_order',
+    'transaction',
+    'address',
+    'currency',
+    'counterparty',
+    'design',
+    'staff'
+]
 
 @pytest.fixture(scope="function")
 def aws_credentials():
@@ -197,7 +214,8 @@ class TestConvertParquetToDF:
 class TestCreateAllTables:
 
     @patch('src.utils.load_utils.get_secret')
-    def test_tables_are_created(self, mock_get_secret, run_seed):
+    def test_tables_are_created(self, mock_get_secret, run_seed, db):
+
         mock_get_secret.return_value = {
             'user':PG_USER,
             'password':PG_PASSWORD,
@@ -206,14 +224,43 @@ class TestCreateAllTables:
             'port':PG_PORT
         }
         create_all_tables()
-        result = db.run('SELECT table_name FROM information_schema.tables')
-        print("db" in locals())
-        print()
+        result = db.run(
+            '''SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';'''
+            )
+        for table in data_tables:
+            assert [table] in result
 
 
-class TestInsertDFIntoPSQL:
+class TestTransformFactTable:
 
-    def test_insert_df_uploads_one_row(self, secretsmanager, s3_with_parquet, db, run_seed):
-        parquet_file = 'test_parquet.parquet'
-        df = convert_parquet_to_df(parquet_file)
-        assert insert_df_into_psql(df) == f'Succesfully inserted {parquet_file} into data warehouse'
+    @patch('src.utils.load_utils.get_secret')
+    def test_fact_table_is_created(self, mock_get_secret, run_seed, db):
+        mock_get_secret.return_value = {
+            'user':PG_USER,
+            'password':PG_PASSWORD,
+            'host':PG_HOST,
+            'database':PG_DATAWAREHOUSE,
+            'port':PG_PORT
+        }
+        # create sql table
+        db.run(create_fct_sales_order)
+        # create mock data
+        data = {
+            "sales_order_id": range(1, 6),  # Mock primary key
+            "created_at": [datetime.now() - timedelta(days=i) for i in range(5)],  # Mock timestamps
+            "last_updated": [datetime.now() - timedelta(days=i) for i in range(5)],  # Mock timestamps
+            "design_id": np.random.randint(1, 10, 5),  # Random design IDs
+            "staff_id": np.random.randint(1, 10, 5),  # Random staff IDs
+            "counterparty_id": np.random.randint(1, 10, 5),  # Random counterparty IDs
+            "units_sold": np.random.randint(1000, 10000, 5),  # Random units sold
+            "unit_price": np.random.uniform(2.0, 4.0, 5).round(2),  # Random unit price
+            "currency_id": np.random.choice([1, 2, 3], 5),  # Random currency IDs (e.g., 1=USD, 2=EUR, 3=GBP)
+            "agreed_delivery_date": [(datetime.now() + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(5)],  # Future dates
+            "agreed_payment_date": [(datetime.now() + timedelta(days=i+10)).strftime('%Y-%m-%d') for i in range(5)],  # Future dates
+            "agreed_delivery_location_id": np.random.randint(1, 10, 5),  # Random delivery location IDs
+        }
+        # create DataFrame
+        df = pl.DataFrame(data)
+        result = populate_fact_sales(df)
+        assert result == 'SQL database successfully populated'
+
