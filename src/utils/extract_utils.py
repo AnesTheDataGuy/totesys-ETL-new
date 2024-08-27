@@ -56,10 +56,11 @@ def create_time_based_path():
     return f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
 
-def get_secret(secret_prefix="totesys-credentials"):
+def get_secret(secret_prefix="totesys-credentials-"):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
-    based on argument given, with the default argument set to the database credentials.
+    based on argument given, with the default argument set to the prefix of 
+    the secret containing the totesys db credentials.
     The secret returned should be a dictionary with 5 keys:
     user - the username for the database
     password - the password for the user
