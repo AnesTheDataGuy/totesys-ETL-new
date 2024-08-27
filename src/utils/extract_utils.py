@@ -56,10 +56,11 @@ def create_time_based_path():
     return f"{year}/{month}/{day}/{hour}:{minute}:{second}/"
 
 
-def get_secret(secret_name="totesys-credentials"):
+def get_secret(secret_prefix="totesys-credentials-"):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
-    based on argument given, with the default argument set to the database credentials.
+    based on argument given, with the default argument set to the prefix of 
+    the secret containing the totesys db credentials.
     The secret returned should be a dictionary with 5 keys:
     user - the username for the database
     password - the password for the user
@@ -71,12 +72,17 @@ def get_secret(secret_name="totesys-credentials"):
     client = session.client(service_name="secretsmanager", region_name="eu-west-2")
 
     try:
-        get_secret_value_response = client.get_secret_value(SecretId=secret_name)
+        secrets_lists_response = client.list_secrets()
+        for secret in secrets_lists_response['SecretList']:
+            if secret['Name'].startswith(secret_prefix):
+                secret_name = secret['Name']
+                break
+        secret_value_response = client.get_secret_value(SecretId=secret_name)
     except ClientError as e:
         logging.error(e)
         raise Exception(f"Can't retrieve secret due to {e}")
 
-    return json.loads(get_secret_value_response["SecretString"])
+    return json.loads(secret_value_response["SecretString"])
 
 
 def connect_to_bucket(client):
@@ -124,7 +130,7 @@ def query_db(dt_name, conn):
     return [header] + data_rows
 
 
-def create_and_upload_csv(data, client, bucket, tablename, first_call):
+def create_and_upload_csv(data, client, bucket, tablename, time_path, first_call):
     """
     Converts a table from a database into a CSV file and uploads that CSV file to either:
     - first_call == True ? bucket/source as *_new.csv , and history/y/m/d/hh:mm:ss/*_differences.csv
@@ -145,7 +151,7 @@ def create_and_upload_csv(data, client, bucket, tablename, first_call):
             client.put_object(
                 Body=file_to_save,
                 Bucket=bucket,
-                Key=f"{HISTORY_PATH}{create_time_based_path()}{tablename}{DIFFERENCES_FILE_SUFFIX}.csv",
+                Key=f"{HISTORY_PATH}{time_path}{tablename}{DIFFERENCES_FILE_SUFFIX}.csv",
             )
         else:
             with open(f'/tmp/{tablename}_new.csv', 'wb') as csvfile:
@@ -153,7 +159,7 @@ def create_and_upload_csv(data, client, bucket, tablename, first_call):
         
     except ClientError as e:
         logging.error(e)
-        raise Exception("Failed to upload file")
+    
 
 
 def compare_csvs(dt_name):

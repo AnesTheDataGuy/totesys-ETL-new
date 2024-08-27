@@ -57,24 +57,25 @@ DATA_TABLES = [
     "transaction",
 ]
 
+
 def lambda_handler(event, context):
     """
     Wrapper function that runs utils functions together.
-    This function establishes a connection to the Totesys online database 
+    This function establishes a connection to the Totesys online database
     using credentials obtained from an AWS secret.
-    It retrieves the latest data tables and compares them with previously 
+    It retrieves the latest data tables and compares them with previously
     stored versions (found in the /source/ directory with an "_original" suffix).
-    The differences between the current and previous tables are saved 
-    as CSV files, organized in a directory structure based on 
+    The differences between the current and previous tables are saved
+    as CSV files, organized in a directory structure based on
     the current date and time (year/month/day/hh:mm:ss).
-    Finally, the existing CSV files in the /source/ directory, 
+    Finally, the existing CSV files in the /source/ directory,
     which hold the complete data tables, are updated with the latest content.
     """
 
     db_credentials = get_secret()
     s3_client = boto3.client("s3")
     raw_data_bucket = connect_to_bucket(s3_client)
-    time_path = create_time_based_path() 
+    time_path = create_time_based_path()
     bucket_content = s3_client.list_objects(Bucket=raw_data_bucket)
 
     if bucket_content.get("Contents"):
@@ -85,35 +86,44 @@ def lambda_handler(event, context):
     try:
         conn = connect_to_db(db_credentials)
         for data_table_name in DATA_TABLES:
-            file_data = query_db(data_table_name,conn)
-            first_call_bool = not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv" in bucket_files
+            file_data = query_db(data_table_name, conn)
+            first_call_bool = (
+                not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv"
+                in bucket_files
+            )
             create_and_upload_csv(
-                    file_data, s3_client, raw_data_bucket, data_table_name, first_call_bool)          
-            
+                file_data, s3_client, raw_data_bucket, 
+                data_table_name, time_path, first_call_bool
+            )
+
             if not first_call_bool:
 
-                #save a copy of _new from /source to /tmp, where it can be manipulated by the lambda function
-                s3_client.download_file(Bucket=raw_data_bucket, 
-                Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv',
-                Filename=f'/tmp/{data_table_name}.csv')
+                # save a copy of _new from /source to /tmp, where it can be manipulated by the lambda function
+                s3_client.download_file(
+                    Bucket=raw_data_bucket,
+                    Key=f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv",
+                    Filename=f"/tmp/{data_table_name}.csv",
+                )
 
                 changes_csv = compare_csvs(data_table_name)
 
-                #save the _differences file to history   
-                s3_client.upload_file(Bucket=raw_data_bucket,
-                                      Filename=f"/tmp/{changes_csv}",
-                                      Key=f'{HISTORY_PATH}{create_time_based_path()}{changes_csv}'              
-                                      )
-                
-                #replace /source/*_new with /tmp/*_new
-                s3_client.upload_file(Bucket=raw_data_bucket,
-                                      Filename=f'/tmp/{data_table_name}_new.csv',
-                                      Key=f'{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv'              
-                                      )
-             
-                #removing the temporary files
-                os.remove(f'/tmp/{data_table_name}.csv')
-                os.remove(f'/tmp/{data_table_name}_new.csv')
+                # save the _differences file to history
+                s3_client.upload_file(
+                    Bucket=raw_data_bucket,
+                    Filename=f"/tmp/{changes_csv}",
+                    Key=f"{HISTORY_PATH}{time_path}{changes_csv}",
+                )
+
+                # replace /source/*_new with /tmp/*_new
+                s3_client.upload_file(
+                    Bucket=raw_data_bucket,
+                    Filename=f"/tmp/{data_table_name}_new.csv",
+                    Key=f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv",
+                )
+
+                # removing the temporary files
+                os.remove(f"/tmp/{data_table_name}.csv")
+                os.remove(f"/tmp/{data_table_name}_new.csv")
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
 
@@ -125,4 +135,4 @@ def lambda_handler(event, context):
         if "conn" in locals():
             conn.close()
 
-    return {"time_path": time_path}
+    return {"time_prefix": time_path}

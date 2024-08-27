@@ -9,16 +9,28 @@ from datetime import datetime as dt
 from dotenv import load_dotenv, find_dotenv
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
-load_dotenv(env_file)
+if env_file != "":
+    load_dotenv(env_file)
+
+    #print(f'\n >>>> ENV: {os.getenv("ENV")}')
 
 # env variables
-PG_USER = os.getenv("PG_USER")
-PG_PASSWORD = os.getenv("PG_PASSWORD")
-PG_DATABASE = os.getenv("PG_DATABASE")
-PG_HOST = os.getenv("PG_HOST")
-PG_PORT = os.getenv("PG_PORT")
+if os.getenv("ENV") == "testing":
+    USER_NAME = os.getenv("PG_USER") 
+    PASSWORD = os.getenv("PG_PASSWORD")
+    DB_NAME = os.getenv("PG_DATABASE")
+    HOST = os.getenv("PG_HOST")
+    PORT = os.getenv("PG_PORT")
+elif os.getenv("ENV") == "development":
+    USER_NAME = os.getenv("DB_USER")
+    PASSWORD = os.getenv("DB_PASSWORD")
+    DB_NAME = os.getenv("DB_NAME")
+    HOST = os.getenv("DB_HOST")
+    PORT = os.getenv("DB_PORT")
 
-#const
+print(f'\n >>>> USER_NAME: {USER_NAME}')
+    
+# const
 SOURCE_PATH = "/source/"
 SOURCE_FILE_SUFFIX = "_new"
 HISTORY_PATH = "/history/"
@@ -58,12 +70,14 @@ def s3(aws_credentials):
         )
         yield s3
 
+
 @pytest.fixture(scope="function")
 def s3_no_buckets(aws_credentials):
     """Mocked S3 client with no buckets."""
     with mock_aws():
         s3_nobuckets = boto3.client("s3")
         yield s3_nobuckets
+
 
 @pytest.fixture(scope="function")
 def s3_wfile_in_source(aws_credentials):
@@ -84,19 +98,20 @@ def s3_wfile_in_source(aws_credentials):
 
         yield s3
 
+
 @pytest.fixture(scope="function")
 def secretsmanager(aws_credentials):
     with mock_aws():
         database_dict = {
-            "user": PG_USER,
-            "password": PG_PASSWORD,
-            "host": PG_HOST,
-            "database": PG_DATABASE,
-            "port": PG_PORT,
+            "user": USER_NAME,
+            "password": PASSWORD,
+            "host": HOST,
+            "database": DB_NAME,
+            "port": PORT,
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys_database_credentials", SecretString=json.dumps(database_dict)
+            Name="totesys-credentials", SecretString=json.dumps(database_dict)
         )
         yield secretsmanager
 
@@ -105,11 +120,11 @@ def secretsmanager(aws_credentials):
 def secretsmanager_broken(aws_credentials):
     with mock_aws():
         database_dict = {
-            "user": PG_USER,
-            "password": PG_PASSWORD,
-            "host": PG_HOST,
+            "user": USER_NAME,
+            "password": PASSWORD,
+            "host": HOST,
             "database": "steve",
-            "port": PG_PORT,
+            "port": PORT,
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
@@ -124,7 +139,7 @@ class DummyContext:  # Dummy context class used for testing
 
 class TestLambdaHandler:
 
-    #@pytest.mark.skip()
+    # @pytest.mark.skip()
     @pytest.mark.it("Raise exception if raw data bucket is not found")
     def test_bucket_does_not_exist(self, s3_no_buckets, secretsmanager):
         event = {}
@@ -132,16 +147,14 @@ class TestLambdaHandler:
         with pytest.raises(Exception):
             lambda_handler(event, context)
 
-
-    #@pytest.mark.skip()
+    # @pytest.mark.skip()
     @pytest.mark.it("script succesfully connects to database")
     def test_succesfully_connects_to_database(self, s3, secretsmanager):
         event = {}
         context = DummyContext()
         assert not isinstance(lambda_handler(event, context), Exception)
 
-
-    #@pytest.mark.skip()
+    # @pytest.mark.skip()
     @pytest.mark.it(
         "returns exception when failing to connect to database due to wrong credentials"
     )
@@ -151,21 +164,22 @@ class TestLambdaHandler:
         with pytest.raises(Exception):
             lambda_handler(event, context)
 
-
-    #@pytest.mark.skip()
+    # @pytest.mark.skip()
     @pytest.mark.it(
         "Successfully uploads csv files to /source and /history/timepath when /source is empty"
     )
-    @patch('src.utils.extract_utils.dt')
-    def test_uploads_csv_to_source_and_history_first_call(self, patched_dt, s3, secretsmanager):
-        patched_dt.now.return_value = dt(2014,3,10)
+    @patch("src.utils.extract_utils.dt")
+    def test_uploads_csv_to_source_and_history_first_call(
+        self, patched_dt, s3, secretsmanager
+    ):
+        patched_dt.now.return_value = dt(2014, 3, 10)
         patched_dt.side_effect = lambda *args, **kw: dt(*args, **kw)
-        
-        path_history =f"{HISTORY_PATH}2014/03/10/00:00:00/"
+
+        path_history = f"{HISTORY_PATH}2014/03/10/00:00:00/"
         event = {}
         context = DummyContext()
         lambda_handler(event, context)
-     
+
         expected_files_in_source = {
             f"{SOURCE_PATH}sales_order{SOURCE_FILE_SUFFIX}.csv": 0,
             f"{SOURCE_PATH}design{SOURCE_FILE_SUFFIX}.csv": 0,
@@ -195,45 +209,39 @@ class TestLambdaHandler:
 
         listing = s3.list_objects_v2(Bucket=MOCK_BUCKET_NAME)
 
-        assert len(listing['Contents']) == 11*2
+        assert len(listing["Contents"]) == 11 * 2
 
-        for i in range(len(listing['Contents'])):
+        for i in range(len(listing["Contents"])):
             assert (
-                f"{listing['Contents'][i]['Key']}" in expected_files_in_source or
-                f"{listing['Contents'][i]['Key']}" in expected_files_in_history )
+                f"{listing['Contents'][i]['Key']}" in expected_files_in_source
+                or f"{listing['Contents'][i]['Key']}" in expected_files_in_history
+            )
 
-
-    #@pytest.mark.skip()
+    # @pytest.mark.skip()
     @pytest.mark.it(
         """Overwrite csv file to in /source after files 
         have been compared and differences are stored in /history"""
     )
     def test_overwrites_new_csv_in_source_dir(self, s3_wfile_in_source, secretsmanager):
-        prev_file =  s3_wfile_in_source.get_object(
-            Bucket=MOCK_BUCKET_NAME,
-            Key=f"/source/staff{SOURCE_FILE_SUFFIX}.csv")
-        
+        prev_file = s3_wfile_in_source.get_object(
+            Bucket=MOCK_BUCKET_NAME, Key=f"/source/staff{SOURCE_FILE_SUFFIX}.csv"
+        )
+
         event = {}
         context = DummyContext()
         lambda_handler(event, context)
 
-        new_file =  s3_wfile_in_source.get_object(
-            Bucket=MOCK_BUCKET_NAME,
-            Key="/source/staff_new.csv")   
-        assert new_file['ContentLength'] > prev_file['ContentLength']
+        new_file = s3_wfile_in_source.get_object(
+            Bucket=MOCK_BUCKET_NAME, Key="/source/staff_new.csv"
+        )
+        assert new_file["ContentLength"] > prev_file["ContentLength"]
 
-
-    @pytest.mark.it(
-        "Mase sure that files in /tmp folder have been deleted"
-    )
+    @pytest.mark.it("Mase sure that files in /tmp folder have been deleted")
     def test_deletes_files_in_tmp_folder(self, s3_wfile_in_source, secretsmanager):
         event = {}
         context = DummyContext()
         lambda_handler(event, context)
 
-        tmp_content = [
-            filename
-            for filename in os.listdir("/tmp")
-        ]
-        assert 'staff.csv' not in tmp_content
-        assert f'staff{SOURCE_FILE_SUFFIX}.csv' not in tmp_content
+        tmp_content = [filename for filename in os.listdir("/tmp")]
+        assert "staff.csv" not in tmp_content
+        assert f"staff{SOURCE_FILE_SUFFIX}.csv" not in tmp_content
