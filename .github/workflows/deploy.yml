@@ -52,9 +52,9 @@ jobs:
           PG_DATABASE: test_totesys
           PG_PORT: 5432
       - name: Install flake8
-       run: pip install flake8
+        run: pip install flake8
       - name: Run flake8
-       run: |
+        run: |
           flake8 src/* test/*
         uses: suo/flake8-github-action@releases/v1
         with:
