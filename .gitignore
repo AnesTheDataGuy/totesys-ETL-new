@@ -1,7 +1,5 @@
 venv
 __pycache__
-.env.development
-.env.testing
 layer/*
 terraform/.terraform
 terraform/.terraform.lock.hcl
@@ -11,4 +9,4 @@ data/*
 *.csv
 data/table_data/*
 .terraform.lock
-
+.env.*
