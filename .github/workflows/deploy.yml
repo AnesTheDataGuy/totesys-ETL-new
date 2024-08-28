@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - ale_kas_deploy_final
+      - ale_kas_deployment
 
 jobs:
   run-tests:
