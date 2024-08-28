@@ -2,6 +2,7 @@ import boto3
 import logging
 import polars as pl
 import os
+from botocore.exceptions import ClientError
 
 
 def finds_data_buckets():
@@ -31,13 +32,16 @@ def finds_data_buckets():
 
     if not found_raw and not found_processed:
         logging.error("No buckets found")
-        return "No buckets found"
+        #return "No buckets found"
+        raise Exception("No buckets found")
     elif not found_raw:
         logging.error("No raw data bucket found")
-        return "No raw data bucket found"
+        #return "No raw data bucket found"
+        raise Exception("No raw data bucket found")
     elif not found_processed:
         logging.error("No processed data bucket found")
-        return "No processed data bucket found"
+        #return "No processed data bucket found"
+        raise Exception("No processed data bucket found")
 
     return raw_data_bucket, processed_data_bucket
 
@@ -55,42 +59,46 @@ def create_star_schema_from_sales_order_csv_file(prefix):
     s3_client = boto3.client("s3")
     raw_data_bucket, processed_data_bucket = finds_data_buckets()
 
-    s3_client.download_file(
-        Bucket=raw_data_bucket,
-        Filename="/tmp/sales_order_new.csv",
-        Key=f"/history/{prefix}sales_order_differences.csv",
-    )
-    s3_client.download_file(
-        Bucket=raw_data_bucket,
-        Filename="/tmp/staff_new.csv",
-        Key=f"/history/{prefix}staff_differences.csv",
-    )
-    s3_client.download_file(
-        Bucket=raw_data_bucket,
-        Filename="/tmp/counterparty_new.csv",
-        Key=f"/history/{prefix}counterparty_differences.csv",
-    )
-    s3_client.download_file(
-        Bucket=raw_data_bucket,
-        Filename="/tmp/currency_new.csv",
-        Key=f"/history/{prefix}currency_differences.csv",
-    )
-    s3_client.download_file(
-        Bucket=raw_data_bucket,
-        Filename="/tmp/address_new.csv",
-        Key=f"/history/{prefix}address_differences.csv",
-    )
-    s3_client.download_file(
-        Bucket=raw_data_bucket,
-        Filename="/tmp/design_new.csv",
-        Key=f"/history/{prefix}design_differences.csv",
-    )
-    s3_client.download_file(
-        Bucket=raw_data_bucket,
-        Filename="/tmp/department_new.csv",
-        Key=f"/history/{prefix}department_differences.csv",
-    )
-
+    try:
+        s3_client.download_file(
+            Bucket=raw_data_bucket,
+            Filename="/tmp/sales_order_new.csv",
+            Key=f"/history/{prefix}sales_order_differences.csv",
+        )
+        s3_client.download_file(
+            Bucket=raw_data_bucket,
+            Filename="/tmp/staff_new.csv",
+            Key=f"/history/{prefix}staff_differences.csv",
+        )
+        s3_client.download_file(
+            Bucket=raw_data_bucket,
+            Filename="/tmp/counterparty_new.csv",
+            Key=f"/history/{prefix}counterparty_differences.csv",
+        )
+        s3_client.download_file(
+            Bucket=raw_data_bucket,
+            Filename="/tmp/currency_new.csv",
+            Key=f"/history/{prefix}currency_differences.csv",
+        )
+        s3_client.download_file(
+            Bucket=raw_data_bucket,
+            Filename="/tmp/address_new.csv",
+            Key=f"/history/{prefix}address_differences.csv",
+        )
+        s3_client.download_file(
+            Bucket=raw_data_bucket,
+            Filename="/tmp/design_new.csv",
+            Key=f"/history/{prefix}design_differences.csv",
+        )
+        s3_client.download_file(
+            Bucket=raw_data_bucket,
+            Filename="/tmp/department_new.csv",
+            Key=f"/history/{prefix}department_differences.csv",
+        )
+    except ClientError as e:
+        logging.error(e)
+        raise Exception("Failed to download file")
+    
     fact_sales_order = pl.read_csv("/tmp/sales_order_new.csv")
     dim_staff = pl.read_csv("/tmp/staff_new.csv")
     dim_counterparty = pl.read_csv("/tmp/counterparty_new.csv")
