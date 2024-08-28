@@ -33,3 +33,4 @@ resource "aws_secretsmanager_secret_version" "dw_credentials_" {
   depends_on = [aws_secretsmanager_secret.dw_credentials_]
 }
 */
+#useless comment to push to main
