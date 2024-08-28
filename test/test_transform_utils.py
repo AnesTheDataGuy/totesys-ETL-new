@@ -2,7 +2,7 @@ import pytest
 import boto3
 import os
 from moto import mock_aws
-from src.lambda_functions.transform_utils import finds_data_buckets, create_star_schema_from_sales_order_csv_file
+from src.utils.transform_utils import finds_data_buckets, create_star_schema_from_sales_order_csv_file
 
 
 @pytest.fixture(scope="function")
