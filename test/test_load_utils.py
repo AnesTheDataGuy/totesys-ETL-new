@@ -250,7 +250,7 @@ def secretsmanager(aws_credentials):
             "user": PG_USER,
             "password": PG_PASSWORD,
             "host": PG_HOST,
-            "name": PG_DATABASE,
+            "name": PG_DATAWAREHOUSE,
             "port": PG_PORT,
         }
         secretsmanager = boto3.client("secretsmanager")
