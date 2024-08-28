@@ -1,23 +1,11 @@
 import boto3
 import logging
-from io import StringIO, BytesIO
 import polars as pl
 from botocore.exceptions import ClientError
-from io import BytesIO, StringIO
+from io import BytesIO
 from pg8000.native import Connection
 import json
-import pyarrow
-from src.utils.queries import star_schema_queries, parquet_to_sql_queries
 
-parquet_tables = [
-    'fact_sales_order.parquet'
-    'dim_staff.parquet',
-    'dim_location.parquet',
-    'dim_counterparty.parquet',
-    'dim_date.parquet',
-    'dim_currency.parquet',
-    'dim_design.parquet',
-]
 
 def find_processed_data_bucket():
     """
@@ -44,6 +32,7 @@ def find_processed_data_bucket():
 
     return processed_data_bucket
 
+
 def get_secret(secret_prefix="totesys-credentials"):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
@@ -54,10 +43,10 @@ def get_secret(secret_prefix="totesys-credentials"):
     host - the url of the server hosting the database
     port - which port we are using to connect with the database
     database - the name of the database that we want to connect to
-    """   
+    """
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager", region_name="eu-west-2")
-    
+
     try:
         get_secrets_lists_response = client.list_secrets()
         for secret in get_secrets_lists_response['SecretList']:
@@ -71,91 +60,20 @@ def get_secret(secret_prefix="totesys-credentials"):
 
     return json.loads(secret_value_response["SecretString"])
 
+
 def connect_to_db(credentials):
     """
-    Uses the secret obtained in the get_secret method to establish a 
+    Uses the secret obtained in the get_secret method to establish a
     connection to the database
     """
     return Connection(
         user=credentials["user"],
         password=credentials["password"],
         host=credentials["host"],
-        database=credentials["database"],
+        database=credentials["name"],
         port=credentials["port"],
     )
 
-def convert_parquet_to_df(parquet):
-    """
-    This takes in a parquet file name, finds this file within the processed data bucket then
-    converts it to a parquet file in buffer storage.
-
-    Args:
-        parquet (string): Name of csv file
-
-    Returns:
-        df (DataFrame object): a DataFrame object created from a parquet file conversion
-    """
-    if not parquet.endswith(".parquet"):
-        return f"{parquet} is not a .parquet file."
-
-    s3_client = boto3.client("s3")
-
-    processed_data_bucket = find_processed_data_bucket()
-    try:
-        res = s3_client.get_object(
-            Bucket=processed_data_bucket, Key=parquet
-        )  
-        parquet_data = res["Body"].read()
-    except ClientError as e:
-        logging.error(f"Failed to get parquet file: {e}")
-        return f"Failed to get parquet file: {e}"
-
-    parquet_data_buffer = BytesIO(parquet_data)
-    df = pl.read_parquet(parquet_data_buffer)
-    # df = pl.read_parquet(res)
-
-    return df
-
-# def create_all_tables():
-#     try:
-#         credentials = get_secret("totesys_data_warehouse_credentials")
-#         db = connect_to_db(credentials)
-
-#         for query in parquet_to_sql_queries:
-#             db.run(query)
-
-#     finally:
-#         if "db" in locals():
-#             db.close()
-
-# def insert_df_into_psql(df, table_name):
-    '''
-    This function should iterate through a dataframe and 
-    insert each row into a psql database using SQL queries. 
-    
-    Arguments:
-        - Dataframe to be uploaded to SQL
-
-    Returns: 
-        - Message indicating successful upload
-    '''
-    try:
-    # connect to Date Warehouse
-        credentials = get_secret("totesys_data_warehouse_credentials")
-        db = connect_to_db(credentials)
-    # create table for parquet
-        query = f'CREATE TABLE "{table_name}" '
-    # Have a for loop that iterates through rows of dataframes
-        for row in df.iter_rows():
-            query = '''
-                INSERT INTO
-                '''
-            db.run()
-        
-    # Upload each row using INSERT statement into Data Warehouse
-    finally:
-        if "db" in locals():
-            db.close()
 
 def populate_fact_sales(time_prefix):
     '''
@@ -166,9 +84,9 @@ def populate_fact_sales(time_prefix):
     processed_data_bucket = find_processed_data_bucket()
     try:
         res = s3_client.get_object(
-            Bucket=processed_data_bucket, 
+            Bucket=processed_data_bucket,
             Key=f'/history/{time_prefix}/fact_sales_order.parquet'
-        )  
+        )
         parquet_data = res["Body"].read()
     except ClientError as e:
         logging.error(f"Failed to get parquet file: {e}")
@@ -179,11 +97,11 @@ def populate_fact_sales(time_prefix):
 
     # reorder columns
     new_order = [
-    "sales_order_id", "created_date", "created_time",
-    "last_updated_date", "last_updated_time", "staff_id",
-    "counterparty_id", "units_sold", "unit_price",
-    "currency_id", "design_id", "agreed_payment_date",
-    "agreed_delivery_date", "agreed_delivery_location_id"
+        "sales_order_id", "created_date", "created_time",
+        "last_updated_date", "last_updated_time", "staff_id",
+        "counterparty_id", "units_sold", "unit_price",
+        "currency_id", "design_id", "agreed_payment_date",
+        "agreed_delivery_date", "agreed_delivery_location_id"
     ]
     df = df.select(new_order)
     # convert the datetime column to string format
@@ -210,12 +128,14 @@ def populate_fact_sales(time_prefix):
                 {row}
                 '''
             db.run(query)
-        return 'SQL database successfully populated'
+        return 'SQL table fact_sales_order successfully populated'
     except ClientError as e:
+        print(e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
             db.close()
+
 
 def populate_dim_staff(time_prefix):
     '''
@@ -226,9 +146,9 @@ def populate_dim_staff(time_prefix):
     processed_data_bucket = find_processed_data_bucket()
     try:
         res = s3_client.get_object(
-            Bucket=processed_data_bucket, 
+            Bucket=processed_data_bucket,
             Key=f'/history/{time_prefix}/dim_staff.parquet'
-        )  
+        )
         parquet_data = res["Body"].read()
     except ClientError as e:
         logging.error(f"Failed to get parquet file: {e}")
@@ -239,29 +159,272 @@ def populate_dim_staff(time_prefix):
 
     # reorder columns
     new_order = [
-    "first_name", "last_name", "department_name", "location", "email_address"
+        "staff_id", "first_name", "last_name", "department_name",
+        "location", "email_address"
     ]
     df = df.select(new_order)
 
-    # insert into fact_sales_order table in data warehouse
+    # insert into dim_staff table in data warehouse
     try:
         credentials = get_secret("totesys-data-warehouse-credentials-")
         db = connect_to_db(credentials)
         for row in df.iter_rows():
-            query = f'''INSERT INTO "fact_sales_order"
-                ("sales_order_id", "created_date",
-                "created_time", "last_updated_date", "last_updated_time",
-                "sales_staff_id", "counterparty_id", "units_sold",
-                "unit_price", "currency_id", "design_id",
-                "agreed_payment_date", "agreed_delivery_date",
-                "agreed_delivery_location_id"
+            query = f'''INSERT INTO "dim_staff"
+                ("staff_id", "first_name", "last_name", "department_name",
+                "location", "email_address"
                 )
                 VALUES
                 {row}
                 '''
             db.run(query)
-        return 'SQL database successfully populated'
+        return 'SQL table dim_staff successfully populated'
     except ClientError as e:
+        print(e)
+        raise Exception('Could not update data warehouse')
+    finally:
+        if "db" in locals():
+            db.close()
+
+
+def populate_dim_date(time_prefix):
+    '''
+    '''
+    # read dim_date.parquet from bucket
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
+    try:
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket,
+            Key=f'/history/{time_prefix}/dim_date.parquet'
+        )
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
+
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
+
+    # reorder columns
+    new_order = [
+        "date_id", "year", "month", "day", "day_of_week",
+        "day_name", "month_name", "quarter"
+    ]
+    df = df.select(new_order)
+
+    # insert into dim_date table in data warehouse
+    try:
+        credentials = get_secret("totesys-data-warehouse-credentials-")
+        db = connect_to_db(credentials)
+        for row in df.iter_rows():
+            query = f'''INSERT INTO "dim_date"
+                ("date_id", "year", "month", "day",
+                "day_of_week", "day_name", "month_name", "quarter"
+                )
+                VALUES
+                {row}
+                '''
+            db.run(query)
+        return 'SQL table dim_date successfully populated'
+    except ClientError as e:
+        print(e)
+        raise Exception('Could not update data warehouse')
+    finally:
+        if "db" in locals():
+            db.close()
+
+
+def populate_dim_location(time_prefix):
+    '''
+    '''
+    # read dim_location.parquet from bucket
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
+    try:
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket,
+            Key=f'/history/{time_prefix}/dim_location.parquet'
+        )
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
+
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
+
+    # reorder columns
+    new_order = [
+        "location_id", "address_line_1", "address_line_2", "district", "city",
+        "postal_code", "country", "phone"
+    ]
+    df = df.select(new_order)
+
+    # insert into dim_location table in data warehouse
+    try:
+        credentials = get_secret("totesys-data-warehouse-credentials-")
+        db = connect_to_db(credentials)
+        for row in df.iter_rows():
+            query = f'''INSERT INTO "dim_location"
+                ("location_id","address_line_1", "address_line_2", "district", "city",
+                "postal_code", "country", "phone"
+                )
+                VALUES
+                {row}
+                '''
+            db.run(query)
+        return 'SQL table dim_location successfully populated'
+    except ClientError as e:
+        print(e)
+        raise Exception('Could not update data warehouse')
+    finally:
+        if "db" in locals():
+            db.close()
+
+
+def populate_dim_currency(time_prefix):
+    '''
+    '''
+    # read dim_currency.parquet from bucket
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
+    try:
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket,
+            Key=f'/history/{time_prefix}/dim_currency.parquet'
+        )
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
+
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
+
+    # reorder columns
+    new_order = [
+        "currency_id", "currency_code", "currency_name"
+    ]
+    df = df.select(new_order)
+
+    # insert into dim_currency table in data warehouse
+    try:
+        credentials = get_secret("totesys-data-warehouse-credentials-")
+        db = connect_to_db(credentials)
+        for row in df.iter_rows():
+            query = f'''INSERT INTO "dim_currency"
+                ("currency_id", "currency_code", "currency_name"
+                )
+                VALUES
+                {row}
+                '''
+            db.run(query)
+        return 'SQL table dim_currency successfully populated'
+    except ClientError as e:
+        print(e)
+        raise Exception('Could not update data warehouse')
+    finally:
+        if "db" in locals():
+            db.close()
+
+
+def populate_dim_design(time_prefix):
+    '''
+    '''
+    # read dim_design.parquet from bucket
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
+    try:
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket,
+            Key=f'/history/{time_prefix}/dim_design.parquet'
+        )
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
+
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
+
+    # reorder columns
+    new_order = [
+        "design_id", "design_name", "file_location", "file_name"
+    ]
+    df = df.select(new_order)
+
+    # insert into dim_design table in data warehouse
+    try:
+        credentials = get_secret("totesys-data-warehouse-credentials-")
+        db = connect_to_db(credentials)
+        for row in df.iter_rows():
+            query = f'''INSERT INTO "dim_design"
+                ("design_id","design_name", "file_location", "file_name"
+                )
+                VALUES
+                {row}
+                '''
+            db.run(query)
+        return 'SQL table dim_design successfully populated'
+    except ClientError as e:
+        print(e)
+        raise Exception('Could not update data warehouse')
+    finally:
+        if "db" in locals():
+            db.close()
+
+
+def populate_dim_counterparty(time_prefix):
+    '''
+    '''
+    # read dim_counterparty.parquet from bucket
+    s3_client = boto3.client("s3")
+
+    processed_data_bucket = find_processed_data_bucket()
+    try:
+        res = s3_client.get_object(
+            Bucket=processed_data_bucket,
+            Key=f'/history/{time_prefix}/dim_counterparty.parquet'
+        )
+        parquet_data = res["Body"].read()
+    except ClientError as e:
+        logging.error(f"Failed to get parquet file: {e}")
+        return f"Failed to get parquet file: {e}"
+
+    parquet_data_buffer = BytesIO(parquet_data)
+    df = pl.read_parquet(parquet_data_buffer)
+
+    # reorder columns
+    new_order = [
+        "counterparty_id", "counterparty_legal_name", "counterparty_legal_address_line_1",
+        "counterparty_legal_address_line_2", "counterparty_legal_district",
+        "counterparty_legal_city", "counterparty_legal_postal_code",
+        "counterparty_legal_country", "counterparty_legal_phone_number"
+    ]
+    df = df.select(new_order)
+
+    # insert into dim_counterparty table in data warehouse
+    try:
+        credentials = get_secret("totesys-data-warehouse-credentials-")
+        db = connect_to_db(credentials)
+        for row in df.iter_rows():
+            query = f'''INSERT INTO "dim_counterparty"
+                ("counterparty_id", "counterparty_legal_name", "counterparty_legal_address_line_1",
+                "counterparty_legal_address_line_2", "counterparty_legal_district",
+                "counterparty_legal_city", "counterparty_legal_postal_code",
+                "counterparty_legal_country", "counterparty_legal_phone_number"
+                )
+                VALUES
+                {row}
+                '''
+            db.run(query)
+        return 'SQL table dim_counterparty successfully populated'
+    except ClientError as e:
+        print(e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
