@@ -23,9 +23,9 @@ resource "aws_secretsmanager_secret" "dw_credentials_" {
 resource "aws_secretsmanager_secret_version" "dw_credentials_" {
   secret_id     = aws_secretsmanager_secret.dw_credentials_.id
   secret_string = jsonencode({
-    DW_PASSWORD = var.DW_PW
-    DW_NAME     = var.DW_DB
-    DW_HOST     = var.DW_HT
+    password = var.DW_PW
+    name     = var.DW_NAME
+    host     = var.DW_HT
   })
 
   depends_on = [aws_secretsmanager_secret.dw_credentials_]
