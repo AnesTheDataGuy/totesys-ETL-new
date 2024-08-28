@@ -92,8 +92,12 @@ def lambda_handler(event, context):
                 in bucket_files
             )
             create_and_upload_csv(
-                file_data, s3_client, raw_data_bucket, 
-                data_table_name, time_path, first_call_bool
+                file_data,
+                s3_client,
+                raw_data_bucket,
+                data_table_name,
+                time_path,
+                first_call_bool,
             )
 
             if not first_call_bool:
@@ -135,4 +139,4 @@ def lambda_handler(event, context):
         if "conn" in locals():
             conn.close()
 
-    return {"time_path": time_path}
+    return {"time_prefix": time_path}

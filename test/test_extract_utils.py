@@ -14,7 +14,7 @@ if env_file != "":
     load_dotenv(env_file)
 # env variables
 if os.getenv("ENV") == "testing":
-    USER_NAME = os.getenv("PG_USER") 
+    USER_NAME = os.getenv("PG_USER")
     PASSWORD = os.getenv("PG_PASSWORD")
     DB_NAME = os.getenv("PG_DATABASE")
     HOST = os.getenv("PG_HOST")
@@ -26,7 +26,7 @@ elif os.getenv("ENV") == "development":
     HOST = os.getenv("DB_HOST")
     PORT = os.getenv("DB_PORT")
 
-    print(f'\n >>>> USER_NAME: {USER_NAME}')
+    print(f"\n >>>> USER_NAME: {USER_NAME}")
 
 
 SOURCE_PATH = "/source/"
@@ -303,7 +303,8 @@ class TestQueryDB:
         result = query_db(dt, conn)
 
         assert len(result) >= 1
-        
+
+
 class TestCreateAndUploadCsv:
 
     @pytest.mark.it(
@@ -320,8 +321,9 @@ class TestCreateAndUploadCsv:
         file_name = "test_file"
         data = [["A", "B", "C"], [1, 2, 3], [4, 5, 6]]
 
-        create_and_upload_csv(data, s3_empty_bucket, bucket_name, 
-                              file_name, time_path, True)
+        create_and_upload_csv(
+            data, s3_empty_bucket, bucket_name, file_name, time_path, True
+        )
 
         list_objects = s3_empty_bucket.list_objects_v2(Bucket=MOCK_BUCKET_NAME)[
             "Contents"
@@ -344,8 +346,9 @@ class TestCreateAndUploadCsv:
         dt_name = "test_dt"
         data = [["A", "B", "C"], [1, 2, 3], [4, 5, 6]]
         time_path = create_time_based_path()
-        create_and_upload_csv(data, s3_empty_bucket, bucket_name, 
-                              dt_name, time_path,False)
+        create_and_upload_csv(
+            data, s3_empty_bucket, bucket_name, dt_name, time_path, False
+        )
 
         csv_path_list = [
             filename
