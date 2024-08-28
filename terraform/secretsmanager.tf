@@ -1,11 +1,7 @@
 resource "aws_secretsmanager_secret" "db_credentials_" {
   name_prefix = "totesys-credentials-"
 }
-/*
-resource "aws_secretsmanager_secret" "dw_credentials_" {
-  name_prefix = "totesys-data-warehouse-credentials-"
-}
-*/
+
 resource "aws_secretsmanager_secret_version" "db_credentials_" {
   secret_id     = aws_secretsmanager_secret.db_credentials_.id
   secret_string = jsonencode({
@@ -19,18 +15,20 @@ resource "aws_secretsmanager_secret_version" "db_credentials_" {
   depends_on = [aws_secretsmanager_secret.db_credentials_]
 }
 
-/*
+
+resource "aws_secretsmanager_secret" "dw_credentials_" {
+  name_prefix = "totesys-data-warehouse-credentials-"
+}
+
 resource "aws_secretsmanager_secret_version" "dw_credentials_" {
   secret_id     = aws_secretsmanager_secret.dw_credentials_.id
   secret_string = jsonencode({
-    DB_USERNAME = var.DW_UN
-    DB_PASSWORD = var.DW_PW
-    DB_NAME     = var.DW_DB
-    DB_HOST     = var.DW_HT
-    DB_PORT     = var.DW_PT
+    user = var.DB_UN
+    port     = var.DB_PT
+    password = var.DW_PW
+    name     = var.DW_NAME
+    host     = var.DW_HT
   })
 
   depends_on = [aws_secretsmanager_secret.dw_credentials_]
 }
-*/
-#useless comment to push to main

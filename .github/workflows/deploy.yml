@@ -105,13 +105,21 @@ jobs:
           TF_VAR_DB_NAME=${{ secrets.DB_NAME }} 
           TF_VAR_DB_HT=${{ secrets.DB_HOST }} 
           TF_VAR_DB_PT=${{ secrets.DB_PORT }} 
+          TF_VAR_DW_NAME=${{ secrets.DW_NAME }} 
+          TF_VAR_DW_HT=${{ secrets.DW_HOST }} 
+          TF_VAR_DW_PW=${{ secrets.DW_PASSWORD }}    
           terraform plan
       - name: Terraform apply
         working-directory: terraform
         run: >
-          TF_VAR_DB_UN=${{ secrets.DB_USERNAME }} 
+          TF_VAR_DB_UN=${{ secrets.DB_USERNAME }}  
           TF_VAR_DB_PW=${{ secrets.DB_PASSWORD }} 
           TF_VAR_DB_NAME=${{ secrets.DB_NAME }} 
           TF_VAR_DB_HT=${{ secrets.DB_HOST }} 
           TF_VAR_DB_PT=${{ secrets.DB_PORT }} 
+          TF_VAR_DW_NAME=${{ secrets.DW_NAME }} 
+          TF_VAR_DW_HT=${{ secrets.DW_HOST }} 
+          TF_VAR_DW_PW=${{ secrets.DW_PASSWORD }} 
           terraform apply --auto-approve
+
+

@@ -68,3 +68,21 @@ variable "DB_PT" {
   type        = string
   sensitive   = true
 }
+
+variable "DW_PW" {
+  description = "Data warehouse password"
+  type        = string
+  sensitive   = true
+}
+
+variable "DW_NAME" {
+  description = "Data warehouse name"
+  type        = string
+  sensitive   = true
+}
+
+variable "DW_HT" {
+  description = "Data warehouse host"
+  type        = string
+  sensitive   = true
+}
