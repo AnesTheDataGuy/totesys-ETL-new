@@ -219,7 +219,7 @@ def s3_with_parquet(aws_credentials):
         data = {
             "currency_id": range(1, 6),  # Mock primary key
             "currency_code": ["currency_code_"+str(i) for i in range(5)],
-            "currency_name": ["currency_name_"+str(i) for i in range(5)], 
+            "currency_name": ["currency_name_"+str(i) for i in range(5)],
         }
         df = pl.DataFrame(data)
         data_buffer_parquet = BytesIO()
@@ -274,6 +274,7 @@ def db():
     )
     return conn
 
+
 @pytest.fixture(scope="function")
 def run_seed(db):
     '''Runs seed before starting tests, yields, runs tests,
@@ -287,6 +288,7 @@ def run_seed(db):
     db.run("TRUNCATE dim_counterparty RESTART IDENTITY CASCADE;")
     yield
     db.close()
+
 
 class TestFindBucket:
 
@@ -320,7 +322,7 @@ class TestGetSecret:
 
 class TestConnectToDB:
 
-    def test_connect_to_db(self, secretsmanager ):
+    def test_connect_to_db(self, secretsmanager):
         secret_name = "totesys_data_warehouse_credentials"
         credentials = get_secret(secret_name)
         assert not isinstance(connect_to_db(credentials), Exception)
@@ -331,35 +333,35 @@ class TestTransformFactTable:
     @patch('src.utils.load_utils.get_secret')
     def test_fact_table_is_created(self, mock_get_secret, run_seed, db, s3_with_parquet):
         mock_get_secret.return_value = {
-            'user':PG_USER,
-            'password':PG_PASSWORD,
-            'host':PG_HOST,
-            'name':PG_DATAWAREHOUSE,
-            'port':PG_PORT
+            'user': PG_USER,
+            'password': PG_PASSWORD,
+            'host': PG_HOST,
+            'name': PG_DATAWAREHOUSE,
+            'port': PG_PORT
         }
 
         expected_columns = [
-            "sales_record_id", "sales_order_id", "created_date", 
-            "created_time", "last_updated_date", "last_updated_time", 
-            "sales_staff_id", "counterparty_id", "units_sold", 
-            "unit_price", "currency_id", "design_id", 
-            "agreed_payment_date", "agreed_delivery_date", 
+            "sales_record_id", "sales_order_id", "created_date",
+            "created_time", "last_updated_date", "last_updated_time",
+            "sales_staff_id", "counterparty_id", "units_sold",
+            "unit_price", "currency_id", "design_id",
+            "agreed_payment_date", "agreed_delivery_date",
             "agreed_delivery_location_id"
             ]
-        
+
         ret = populate_fact_sales(MOCK_TIME_PATH)
-        
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = 'fact_sales_order';"
+
+        query = "SELECT column_name FROM information_schema.columns WHERE table_name = 'fact_sales_order';"
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
         assert result_unlisted == expected
 
-        query = f"SELECT units_sold FROM fact_sales_order;"
+        query = "SELECT units_sold FROM fact_sales_order;"
         result = db.run(query)
         result = [row[0] for row in result]
         assert result == [1000, 2000, 3000, 4000, 5000]
-        
+
         assert ret == 'SQL table fact_sales_order successfully populated'
 
 
@@ -368,31 +370,31 @@ class TestTransformDimStaff:
     @patch('src.utils.load_utils.get_secret')
     def test_dim_staff_table_is_created(self, mock_get_secret, run_seed, db, s3_with_parquet):
         mock_get_secret.return_value = {
-            'user':PG_USER,
-            'password':PG_PASSWORD,
-            'host':PG_HOST,
-            'name':PG_DATAWAREHOUSE,
-            'port':PG_PORT
+            'user': PG_USER,
+            'password': PG_PASSWORD,
+            'host': PG_HOST,
+            'name': PG_DATAWAREHOUSE,
+            'port': PG_PORT
         }
 
         expected_columns = [
-            "staff_id", "first_name", "last_name", 
+            "staff_id", "first_name", "last_name",
             "department_name", "location", "email_address"
-            ]        
-        
+            ]
+
         ret = populate_dim_staff(MOCK_TIME_PATH)
-        
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_staff';"
+
+        query = "SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_staff';"
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
         assert result_unlisted == expected
 
-        query = f"SELECT first_name FROM dim_staff;"
+        query = "SELECT first_name FROM dim_staff;"
         result = db.run(query)
         result = [row[0] for row in result]
         assert result == ["firstName_"+str(i) for i in range(5)]
-        
+
         assert ret == 'SQL table dim_staff successfully populated'
 
 
@@ -401,31 +403,31 @@ class TestTransformDimDate:
     @patch('src.utils.load_utils.get_secret')
     def test_dim_date_table_is_created(self, mock_get_secret, run_seed, db, s3_with_parquet):
         mock_get_secret.return_value = {
-            'user':PG_USER,
-            'password':PG_PASSWORD,
-            'host':PG_HOST,
-            'name':PG_DATAWAREHOUSE,
-            'port':PG_PORT
+            'user': PG_USER,
+            'password': PG_PASSWORD,
+            'host': PG_HOST,
+            'name': PG_DATAWAREHOUSE,
+            'port': PG_PORT
         }
 
         expected_columns = [
-            "date_id", "year", "month", "day", "day_of_week", 
+            "date_id", "year", "month", "day", "day_of_week",
             "day_name", "month_name", "quarter"
-            ]        
-        
+            ]
+
         ret = populate_dim_date(MOCK_TIME_PATH)
-        
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_date';"
+
+        query = "SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_date';"
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
         assert result_unlisted == expected
 
-        query = f"SELECT day FROM dim_date;"
+        query = "SELECT day FROM dim_date;"
         result = db.run(query)
         result = [row[0] for row in result]
         assert result == [i for i in range(5)]
-        
+
         assert ret == 'SQL table dim_date successfully populated'
 
 
@@ -434,31 +436,31 @@ class TestTransformDimLocation:
     @patch('src.utils.load_utils.get_secret')
     def test_dim_location_table_is_created(self, mock_get_secret, run_seed, db, s3_with_parquet):
         mock_get_secret.return_value = {
-            'user':PG_USER,
-            'password':PG_PASSWORD,
-            'host':PG_HOST,
-            'name':PG_DATAWAREHOUSE,
-            'port':PG_PORT
+            'user': PG_USER,
+            'password': PG_PASSWORD,
+            'host': PG_HOST,
+            'name': PG_DATAWAREHOUSE,
+            'port': PG_PORT
         }
 
         expected_columns = [
-        "location_id", "address_line_1", "address_line_2", "district", "city",
-        "postal_code", "country", "phone"
+            "location_id", "address_line_1", "address_line_2", "district", "city",
+            "postal_code", "country", "phone"
         ]
-        
+
         ret = populate_dim_location(MOCK_TIME_PATH)
-        
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_location';"
+
+        query = "SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_location';"
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
         assert result_unlisted == expected
 
-        query = f"SELECT city FROM dim_location;"
+        query = "SELECT city FROM dim_location;"
         result = db.run(query)
         result = [row[0] for row in result]
         assert result == ["city_"+str(i) for i in range(5)]
-        
+
         assert ret == 'SQL table dim_location successfully populated'
 
 
@@ -467,30 +469,30 @@ class TestTransformDimDesign:
     @patch('src.utils.load_utils.get_secret')
     def test_dim_design_table_is_created(self, mock_get_secret, run_seed, db, s3_with_parquet):
         mock_get_secret.return_value = {
-            'user':PG_USER,
-            'password':PG_PASSWORD,
-            'host':PG_HOST,
-            'name':PG_DATAWAREHOUSE,
-            'port':PG_PORT
+            'user': PG_USER,
+            'password': PG_PASSWORD,
+            'host': PG_HOST,
+            'name': PG_DATAWAREHOUSE,
+            'port': PG_PORT
         }
 
         expected_columns = [
-        "design_id", "design_name", "file_location", "file_name"
+            "design_id", "design_name", "file_location", "file_name"
         ]
-        
+
         ret = populate_dim_design(MOCK_TIME_PATH)
-        
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_design';"
+
+        query = "SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_design';"
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
         assert result_unlisted == expected
 
-        query = f"SELECT design_name FROM dim_design;"
+        query = "SELECT design_name FROM dim_design;"
         result = db.run(query)
         result = [row[0] for row in result]
         assert result == ["design_name_"+str(i) for i in range(5)]
-        
+
         assert ret == 'SQL table dim_design successfully populated'
 
 
@@ -499,30 +501,30 @@ class TestTransformDimCurrency:
     @patch('src.utils.load_utils.get_secret')
     def test_dim_currency_table_is_created(self, mock_get_secret, run_seed, db, s3_with_parquet):
         mock_get_secret.return_value = {
-            'user':PG_USER,
-            'password':PG_PASSWORD,
-            'host':PG_HOST,
-            'name':PG_DATAWAREHOUSE,
-            'port':PG_PORT
+            'user': PG_USER,
+            'password': PG_PASSWORD,
+            'host': PG_HOST,
+            'name': PG_DATAWAREHOUSE,
+            'port': PG_PORT
         }
 
         expected_columns = [
-        "currency_id", "currency_code", "currency_name"
+            "currency_id", "currency_code", "currency_name"
         ]
-        
+
         ret = populate_dim_currency(MOCK_TIME_PATH)
-        
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_currency';"
+
+        query = "SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_currency';"
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
         assert result_unlisted == expected
 
-        query = f"SELECT currency_code FROM dim_currency;"
+        query = "SELECT currency_code FROM dim_currency;"
         result = db.run(query)
         result = [row[0] for row in result]
         assert result == ["currency_code_"+str(i) for i in range(5)]
-        
+
         assert ret == 'SQL table dim_currency successfully populated'
 
 
@@ -531,32 +533,32 @@ class TestTransformDimCounterparty:
     @patch('src.utils.load_utils.get_secret')
     def test_dim_counterparty_table_is_created(self, mock_get_secret, run_seed, db, s3_with_parquet):
         mock_get_secret.return_value = {
-            'user':PG_USER,
-            'password':PG_PASSWORD,
-            'host':PG_HOST,
-            'name':PG_DATAWAREHOUSE,
-            'port':PG_PORT
+            'user': PG_USER,
+            'password': PG_PASSWORD,
+            'host': PG_HOST,
+            'name': PG_DATAWAREHOUSE,
+            'port': PG_PORT
         }
 
         expected_columns = [
-        "counterparty_id","counterparty_legal_name", 
-        "counterparty_legal_address_line_1","counterparty_legal_address_line_2", 
-        "counterparty_legal_district","counterparty_legal_city", 
-        "counterparty_legal_postal_code", "counterparty_legal_country", 
-        "counterparty_legal_phone_number"
+            "counterparty_id", "counterparty_legal_name",
+            "counterparty_legal_address_line_1", "counterparty_legal_address_line_2",
+            "counterparty_legal_district", "counterparty_legal_city",
+            "counterparty_legal_postal_code", "counterparty_legal_country",
+            "counterparty_legal_phone_number"
         ]
-        
+
         ret = populate_dim_counterparty(MOCK_TIME_PATH)
-        
-        query = f"SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_counterparty';"
+
+        query = "SELECT column_name FROM information_schema.columns WHERE table_name = 'dim_counterparty';"
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
         assert result_unlisted == expected
 
-        query = f"SELECT counterparty_legal_city FROM dim_counterparty;"
+        query = "SELECT counterparty_legal_city FROM dim_counterparty;"
         result = db.run(query)
         result = [row[0] for row in result]
         assert result == ["city_"+str(i) for i in range(5)]
-        
+
         assert ret == 'SQL table dim_counterparty successfully populated'
