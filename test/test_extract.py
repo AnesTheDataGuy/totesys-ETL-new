@@ -111,7 +111,7 @@ def secretsmanager(aws_credentials):
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys-credentials", SecretString=json.dumps(database_dict)
+            Name="totesys-credentials-0000", SecretString=json.dumps(database_dict)
         )
         yield secretsmanager
 
@@ -128,7 +128,7 @@ def secretsmanager_broken(aws_credentials):
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys_database_credentials", SecretString=json.dumps(database_dict)
+            Name="totesys_database_credentials-0000", SecretString=json.dumps(database_dict)
         )
         yield secretsmanager
 
