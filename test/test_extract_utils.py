@@ -6,6 +6,7 @@ import csv
 from moto import mock_aws
 from unittest.mock import patch
 from datetime import datetime as dt
+from pg8000.native import Connection
 from src.utils.extract_utils import create_time_based_path, get_secret, connect_to_bucket, connect_to_db, query_db, create_and_upload_csv, compare_csvs
 from dotenv import load_dotenv, find_dotenv
 
