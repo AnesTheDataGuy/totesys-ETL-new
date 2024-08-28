@@ -131,7 +131,7 @@ def s3(aws_credentials):
 7,75653 Ernestine Ways,,Buckinghamshire,North Deshaun,02813,Faroe Islands,1373 796260,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000
 8,0579 Durgan Common,,,Suffolk,56693-0660,United Kingdom,8935 157571,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000
 9,644 Edward Garden,,Borders,New Tyra,30825-5672,Australia,0768 748652,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000
-10,49967 Kaylah Flat,Tremaine Circles,Bedfordshire,Beaulahcester,89470,Democratic People's Republic of Korea,4949 998070,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000""",
+10,49967 Kaylah Flat,,,Beaulahcester,89470,Democratic People's Republic of Korea,4949 998070,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000""",
             Bucket="totesys-raw-data-000000",
             Key=f"/history/{prefix}address_differences.csv",
         )

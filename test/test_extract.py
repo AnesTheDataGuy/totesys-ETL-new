@@ -220,7 +220,7 @@ class TestLambdaHandler:
 
     # @pytest.mark.skip()
     @pytest.mark.it(
-        """Overwrite csv file to in /source after files 
+        """Overwrite csv file to in /source after files
         have been compared and differences are stored in /history"""
     )
     def test_overwrites_new_csv_in_source_dir(self, s3_wfile_in_source, secretsmanager):

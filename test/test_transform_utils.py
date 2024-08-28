@@ -2,9 +2,7 @@ import pytest
 import boto3
 import os
 from moto import mock_aws
-from src.lambda_functions.transform import *
-import polars as pl
-from io import BytesIO
+from src.utils.transform_utils import finds_data_buckets, create_star_schema_from_sales_order_csv_file
 
 
 @pytest.fixture(scope="function")
@@ -176,7 +174,7 @@ def s3_star_schema(aws_credentials):
 7,75653 Ernestine Ways,,Buckinghamshire,North Deshaun,02813,Faroe Islands,1373 796260,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000
 8,0579 Durgan Common,,,Suffolk,56693-0660,United Kingdom,8935 157571,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000
 9,644 Edward Garden,,Borders,New Tyra,30825-5672,Australia,0768 748652,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000
-10,49967 Kaylah Flat,Tremaine Circles,Bedfordshire,Beaulahcester,89470,Democratic People's Republic of Korea,4949 998070,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000""",
+10,49967 Kaylah Flat,,,Beaulahcester,89470,Democratic People's Republic of Korea,4949 998070,2022-11-03 14:20:49.962000,2022-11-03 14:20:49.962000""",
             Bucket="totesys-raw-data-000000",
             Key=f"/history/{prefix}address_differences.csv",
         )
@@ -185,21 +183,21 @@ def s3_star_schema(aws_credentials):
 
 
 class TestFindsDataBuckets:
-    @pytest.mark.it("No buckets found with correct error message")
+    @pytest.mark.it("Raises exception when no bucket is found")
     def test_no_buckets_found(self, s3_no_buckets):
+        with pytest.raises(Exception):
+            finds_data_buckets()
+        
 
-        result = finds_data_buckets()
-        assert result == "No buckets found"
-
-    @pytest.mark.it("No raw data bucket found with correct error message")
+    @pytest.mark.it("Raises exception when no raw data bucket is found")
     def test_no_raw_bucket_found(self, s3_processed):
-        result = finds_data_buckets()
-        assert result == "No raw data bucket found"
+        with pytest.raises(Exception):
+            finds_data_buckets()
 
-    @pytest.mark.it("No processed data bucket found with correct error message")
+    @pytest.mark.it("Raises exception when no processed data bucket is found")
     def test_no_processed_bucket_found(self, s3_raw):
-        result = finds_data_buckets()
-        assert result == "No processed data bucket found"
+        with pytest.raises(Exception):
+            finds_data_buckets()
 
     @pytest.mark.it("Finds both buckets and returns them")
     def test_returns_buckets_when_found(self, s3):
@@ -208,11 +206,16 @@ class TestFindsDataBuckets:
 
 
 class TestStarSchema:
+    @pytest.mark.it("Raises exception if any raw data file is missing")
+    def test_file_not_found_in_raw_data_bucket(self,s3):
+        with pytest.raises(Exception):
+            create_star_schema_from_sales_order_csv_file(prefix)
+            
     @pytest.mark.it(
         "Successfully creates star schema database if parquet files do not exist"
     )
     def test_source_data_parquet_does_not_exist(self, s3_star_schema):
-        result = create_star_schema_from_sales_order_csv_file(prefix)
+        create_star_schema_from_sales_order_csv_file(prefix)
         object_list = []
         for object in s3_star_schema.list_objects(
             Bucket="totesys-processed-data-000000"

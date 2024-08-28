@@ -6,7 +6,8 @@ import csv
 from moto import mock_aws
 from unittest.mock import patch
 from datetime import datetime as dt
-from src.utils.extract_utils import *
+from pg8000.native import Connection
+from src.utils.extract_utils import create_time_based_path, get_secret, connect_to_bucket, connect_to_db, query_db, create_and_upload_csv, compare_csvs
 from dotenv import load_dotenv, find_dotenv
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
@@ -462,7 +463,7 @@ class TestCompareCsvs:
 
     # @pytest.mark.skip()
     @pytest.mark.it(
-        """Creates a csv file containing changes between 
+        """Creates a csv file containing changes between
         the two csvs (new dt has edited rows)"""
     )
     def test_change_in_datatable_edited_rows(self, s3_rows_edited, secretsmanager):
