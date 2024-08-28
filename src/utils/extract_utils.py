@@ -59,8 +59,7 @@ def create_time_based_path():
 def get_secret(secret_prefix="totesys-credentials-"):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
-    based on argument given, with the default argument set to the prefix of 
-    the secret containing the totesys db credentials.
+    based on argument given, with the default argument set to the database credentials.
     The secret returned should be a dictionary with 5 keys:
     user - the username for the database
     password - the password for the user
@@ -70,10 +69,10 @@ def get_secret(secret_prefix="totesys-credentials-"):
     """
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager", region_name="eu-west-2")
-
+    
     try:
-        secrets_lists_response = client.list_secrets()
-        for secret in secrets_lists_response['SecretList']:
+        get_secrets_lists_response = client.list_secrets()
+        for secret in get_secrets_lists_response['SecretList']:
             if secret['Name'].startswith(secret_prefix):
                 secret_name = secret['Name']
                 break
@@ -159,21 +158,20 @@ def create_and_upload_csv(data, client, bucket, tablename, time_path, first_call
         
     except ClientError as e:
         logging.error(e)
-    
+        raise Exception("Failed to upload file")
 
 
 def compare_csvs(dt_name):
     """
-    Takes two csvs and compares the differences between them, returning an
+    Takes two csvs (dt_name.csv, dt_name_new.csv) located in /tmp
+    and compares the differences between them, returning an
     empty csv if no differences found.
 
-    Args:
-    csv1 - Csv containing previous database data
-    csv2 - Csv containing new database data
+    Arg: datatable name (= prefix of csv file name)
 
     Returns:
     csv file containing all changes to database (if csv1 and csv2 are not equal)
-    None (if csv1 and csv2 are equal)
+    None (if dt_name.csv, dt_name_new.csv are equal)
     """
     csv_prev = f"/tmp/{dt_name}.csv"
     csv_new = f"/tmp/{dt_name}_new.csv"
@@ -191,16 +189,16 @@ def compare_csvs(dt_name):
     ).stdout
     differences = subprocess.run(["echo", diff_output], capture_output=True)
 
-    print(f"\n differences: {differences}")
+    #print(f"\n differences: {differences}")
     changes_to_table = re.findall(CSV_REGEX, differences.stdout.decode())
-    print(f"\nCHANGES TO TABLE: {changes_to_table}")
+    #print(f"\nCHANGES TO TABLE: {changes_to_table}")
     filepath = f"{dt_name}_differences.csv"
     with open(f"/tmp/{filepath}", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(header[0])
         for change in changes_to_table:
             change_list = [k for k in list(change) if not "" == k]
-            print(f"\nchange_list: {change_list}")
+            #print(f"\nchange_list: {change_list}")
             csvwriter.writerow(change_list[0].split(","))
 
     if changes_to_table == "\n":

@@ -135,4 +135,4 @@ def lambda_handler(event, context):
         if "conn" in locals():
             conn.close()
 
-    return {"time_prefix": time_path}
+    return {"time_path": time_path}
