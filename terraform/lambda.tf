@@ -24,8 +24,17 @@ data "archive_file" "load_lambda" {
 data "archive_file" "transform_lambda" {
   type             = "zip"
   output_file_mode = "0666"
-  source_file      = "${path.module}/../src/lambda_functions/transform.py"
-  output_path      = "${path.module}/../zip_code/transform.zip"
+  source {
+    content  = file("${path.module}/../src/lambda_functions/transform.py")
+    filename = "transform.py"
+  }
+
+  source {
+    content  = file("${path.module}/../src/utils/transform_utils.py")
+    filename = "src/utils/transform_utils.py"
+  }
+
+  output_path = "${path.module}/../zip_code/transform.zip"
 }
 
 resource "aws_s3_object" "extract_lambda_zip" {
@@ -52,6 +61,10 @@ resource "aws_s3_object" "transform_lambda_zip" {
   bucket = aws_s3_bucket.lambda_bucket.bucket
   source = "${path.module}/../zip_code/transform.zip"
   key    = "transform.zip"
+  etag   = filebase64sha256(data.archive_file.load_lambda.output_path)
+  metadata = {
+    last_updated = timestamp()
+  }
 }
 
 resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
@@ -63,7 +76,7 @@ resource "aws_lambda_function" "extract_lambda" { #Provision the lambda
   layers           = [aws_lambda_layer_version.extract_lambda_layer.arn]
   runtime          = var.python_runtime
   handler          = "extract.lambda_handler"
-  timeout          = 40
+  timeout          = 120
 }
 
 resource "aws_lambda_function" "load_lambda" { #Provision the lambda
