@@ -5,9 +5,8 @@ import csv
 import json
 import re
 import subprocess
-import shutil
 from datetime import datetime as dt
-from pg8000.native import Connection, Error
+from pg8000.native import Connection
 from botocore.exceptions import ClientError
 from io import StringIO
 

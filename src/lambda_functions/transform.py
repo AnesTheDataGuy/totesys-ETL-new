@@ -1,7 +1,5 @@
 import boto3
-import logging
-from botocore.exceptions import ClientError
-from src.utils.transform_utils import *
+from src.utils.transform_utils import finds_data_buckets, create_star_schema_from_sales_order_csv_file
 
 csvs = [
     "sales_order.csv",
@@ -30,8 +28,7 @@ def lambda_handler(event, context):
     Returns:
         dict: dictionary with time prefix to be used in the load function
     """
-    s3_client = boto3.client("s3")
-
+    
     prefix = event["time_prefix"]
 
     create_star_schema_from_sales_order_csv_file(prefix)

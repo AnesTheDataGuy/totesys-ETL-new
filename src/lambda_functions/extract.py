@@ -1,9 +1,7 @@
 import boto3
 import logging
 import os
-from datetime import datetime as dt
-from pg8000.native import Connection, Error
-from src.utils.extract_utils import *
+from src.utils.extract_utils import create_time_based_path, get_secret, connect_to_bucket, connect_to_db, query_db, create_and_upload_csv, compare_csvs
 
 """
 RAW DATA BUCKET STRUCTURE:
@@ -26,7 +24,7 @@ history/
 │  │  │  ├─ hh:mm:ss/
 │  │  │  │  ├─ address_differences.csv 
 │  │  │  │  ├─ counterparty_differences.csv 
-│  │  │  │  ├─ currency_differences.csv 
+│  │  │  │  ├─ currency_differences.csv
 │  │  │  │  ├─ department_differences.csv
 │  │  │  │  ├─ design_differences.csv
 │  │  │  │  ├─ payment_differences.csv
@@ -88,8 +86,8 @@ def lambda_handler(event, context):
         for data_table_name in DATA_TABLES:
             file_data = query_db(data_table_name, conn)
             first_call_bool = (
-                not f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv"
-                in bucket_files
+                f"{SOURCE_PATH}{data_table_name}{SOURCE_FILE_SUFFIX}.csv"
+                not in bucket_files
             )
             create_and_upload_csv(
                 file_data,

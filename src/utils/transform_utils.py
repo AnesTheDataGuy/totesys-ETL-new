@@ -1,9 +1,6 @@
 import boto3
 import logging
-from io import StringIO, BytesIO
 import polars as pl
-from botocore.exceptions import ClientError
-import datetime as dt
 import os
 
 
