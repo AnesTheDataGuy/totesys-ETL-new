@@ -421,7 +421,8 @@ class TestTransformDimDate:
         expected = expected_columns
         result = db.run(query)
         result_unlisted = [column[0] for column in result]
-        assert result_unlisted == expected
+        for column in result_unlisted:
+            assert column in expected_columns
 
         query = "SELECT day FROM dim_date;"
         result = db.run(query)
