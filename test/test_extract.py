@@ -12,11 +12,11 @@ env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
 if env_file != "":
     load_dotenv(env_file)
 
-    #print(f'\n >>>> ENV: {os.getenv("ENV")}')
+    # print(f'\n >>>> ENV: {os.getenv("ENV")}')
 
 # env variables
 if os.getenv("ENV") == "testing":
-    USER_NAME = os.getenv("PG_USER") 
+    USER_NAME = os.getenv("PG_USER")
     PASSWORD = os.getenv("PG_PASSWORD")
     DB_NAME = os.getenv("PG_DATABASE")
     HOST = os.getenv("PG_HOST")
@@ -28,8 +28,8 @@ elif os.getenv("ENV") == "development":
     HOST = os.getenv("DB_HOST")
     PORT = os.getenv("DB_PORT")
 
-print(f'\n >>>> USER_NAME: {USER_NAME}')
-    
+# print(f'\n >>>> USER_NAME: {USER_NAME}')
+
 # const
 SOURCE_PATH = "/source/"
 SOURCE_FILE_SUFFIX = "_new"
@@ -111,7 +111,7 @@ def secretsmanager(aws_credentials):
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys-credentials", SecretString=json.dumps(database_dict)
+            Name="totesys-credentials-0000", SecretString=json.dumps(database_dict)
         )
         yield secretsmanager
 
@@ -128,7 +128,8 @@ def secretsmanager_broken(aws_credentials):
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys_database_credentials", SecretString=json.dumps(database_dict)
+            Name="totesys_database_credentials-0000",
+            SecretString=json.dumps(database_dict),
         )
         yield secretsmanager
 
@@ -219,7 +220,7 @@ class TestLambdaHandler:
 
     # @pytest.mark.skip()
     @pytest.mark.it(
-        """Overwrite csv file to in /source after files 
+        """Overwrite csv file to in /source after files
         have been compared and differences are stored in /history"""
     )
     def test_overwrites_new_csv_in_source_dir(self, s3_wfile_in_source, secretsmanager):

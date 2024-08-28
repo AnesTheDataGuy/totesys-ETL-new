@@ -6,7 +6,8 @@ import csv
 from moto import mock_aws
 from unittest.mock import patch
 from datetime import datetime as dt
-from src.utils.extract_utils import *
+from pg8000.native import Connection
+from src.utils.extract_utils import create_time_based_path, get_secret, connect_to_bucket, connect_to_db, query_db, create_and_upload_csv, compare_csvs
 from dotenv import load_dotenv, find_dotenv
 
 env_file = find_dotenv(f'.env.{os.getenv("ENV")}')
@@ -14,7 +15,7 @@ if env_file != "":
     load_dotenv(env_file)
 # env variables
 if os.getenv("ENV") == "testing":
-    USER_NAME = os.getenv("PG_USER") 
+    USER_NAME = os.getenv("PG_USER")
     PASSWORD = os.getenv("PG_PASSWORD")
     DB_NAME = os.getenv("PG_DATABASE")
     HOST = os.getenv("PG_HOST")
@@ -26,7 +27,7 @@ elif os.getenv("ENV") == "development":
     HOST = os.getenv("DB_HOST")
     PORT = os.getenv("DB_PORT")
 
-    print(f'\n >>>> USER_NAME: {USER_NAME}')
+    print(f"\n >>>> USER_NAME: {USER_NAME}")
 
 
 SOURCE_PATH = "/source/"
@@ -219,7 +220,7 @@ def secretsmanager(aws_credentials):
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys-credentials", SecretString=json.dumps(database_dict)
+            Name="totesys-credentials-0000", SecretString=json.dumps(database_dict)
         )
         yield secretsmanager
 
@@ -236,7 +237,7 @@ def secretsmanager_broken(aws_credentials):
         }
         secretsmanager = boto3.client("secretsmanager")
         secretsmanager.create_secret(
-            Name="totesys-credentials", SecretString=json.dumps(database_dict)
+            Name="totesys-credentials-0000", SecretString=json.dumps(database_dict)
         )
         yield secretsmanager
 
@@ -303,7 +304,8 @@ class TestQueryDB:
         result = query_db(dt, conn)
 
         assert len(result) >= 1
-        
+
+
 class TestCreateAndUploadCsv:
 
     @pytest.mark.it(
@@ -320,8 +322,9 @@ class TestCreateAndUploadCsv:
         file_name = "test_file"
         data = [["A", "B", "C"], [1, 2, 3], [4, 5, 6]]
 
-        create_and_upload_csv(data, s3_empty_bucket, bucket_name, 
-                              file_name, time_path, True)
+        create_and_upload_csv(
+            data, s3_empty_bucket, bucket_name, file_name, time_path, True
+        )
 
         list_objects = s3_empty_bucket.list_objects_v2(Bucket=MOCK_BUCKET_NAME)[
             "Contents"
@@ -344,8 +347,9 @@ class TestCreateAndUploadCsv:
         dt_name = "test_dt"
         data = [["A", "B", "C"], [1, 2, 3], [4, 5, 6]]
         time_path = create_time_based_path()
-        create_and_upload_csv(data, s3_empty_bucket, bucket_name, 
-                              dt_name, time_path,False)
+        create_and_upload_csv(
+            data, s3_empty_bucket, bucket_name, dt_name, time_path, False
+        )
 
         csv_path_list = [
             filename
@@ -459,7 +463,7 @@ class TestCompareCsvs:
 
     # @pytest.mark.skip()
     @pytest.mark.it(
-        """Creates a csv file containing changes between 
+        """Creates a csv file containing changes between
         the two csvs (new dt has edited rows)"""
     )
     def test_change_in_datatable_edited_rows(self, s3_rows_edited, secretsmanager):

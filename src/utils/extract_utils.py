@@ -6,14 +6,14 @@ import json
 import re
 import subprocess
 from datetime import datetime as dt
-from pg8000.native import Connection, Error
+from pg8000.native import Connection
 from botocore.exceptions import ClientError
 from io import StringIO
 
-#for debugging
+# for debugging
 CSV_REGEX = r">\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)"
 
-HISTORY_PATH = "/history/" 
+HISTORY_PATH = "/history/"
 SOURCE_PATH = "/source/"
 SOURCE_FILE_SUFFIX = "_new"
 DIFFERENCES_FILE_SUFFIX = "_differences"
@@ -30,6 +30,7 @@ DATA_TABLES = [
     "payment",
     "transaction",
 ]
+
 
 def create_time_based_path():
     """
@@ -59,8 +60,7 @@ def create_time_based_path():
 def get_secret(secret_prefix="totesys-credentials-"):
     """
     Initialises a boto3 secrets manager client and retrieves secret from secrets manager
-    based on argument given, with the default argument set to the prefix of 
-    the secret containing the totesys db credentials.
+    based on argument given, with the default argument set to the database credentials.
     The secret returned should be a dictionary with 5 keys:
     user - the username for the database
     password - the password for the user
@@ -72,10 +72,10 @@ def get_secret(secret_prefix="totesys-credentials-"):
     client = session.client(service_name="secretsmanager", region_name="eu-west-2")
 
     try:
-        secrets_lists_response = client.list_secrets()
-        for secret in secrets_lists_response['SecretList']:
-            if secret['Name'].startswith(secret_prefix):
-                secret_name = secret['Name']
+        get_secrets_lists_response = client.list_secrets()
+        for secret in get_secrets_lists_response["SecretList"]:
+            if secret["Name"].startswith(secret_prefix):
+                secret_name = secret["Name"]
                 break
         secret_value_response = client.get_secret_value(SecretId=secret_name)
     except ClientError as e:
@@ -154,26 +154,25 @@ def create_and_upload_csv(data, client, bucket, tablename, time_path, first_call
                 Key=f"{HISTORY_PATH}{time_path}{tablename}{DIFFERENCES_FILE_SUFFIX}.csv",
             )
         else:
-            with open(f'/tmp/{tablename}_new.csv', 'wb') as csvfile:
+            with open(f"/tmp/{tablename}_new.csv", "wb") as csvfile:
                 csvfile.write(file_to_save)
-        
+
     except ClientError as e:
         logging.error(e)
-    
+        raise Exception("Failed to upload file")
 
 
 def compare_csvs(dt_name):
     """
-    Takes two csvs and compares the differences between them, returning an
+    Takes two csvs (dt_name.csv, dt_name_new.csv) located in /tmp
+    and compares the differences between them, returning an
     empty csv if no differences found.
 
-    Args:
-    csv1 - Csv containing previous database data
-    csv2 - Csv containing new database data
+    Arg: datatable name (= prefix of csv file name)
 
     Returns:
     csv file containing all changes to database (if csv1 and csv2 are not equal)
-    None (if csv1 and csv2 are equal)
+    None (if dt_name.csv, dt_name_new.csv are equal)
     """
     csv_prev = f"/tmp/{dt_name}.csv"
     csv_new = f"/tmp/{dt_name}_new.csv"
@@ -186,21 +185,26 @@ def compare_csvs(dt_name):
             header.append(row)
             break
 
-    diff_output = subprocess.run(
-        ["diff", csv_prev, csv_new], capture_output=True
-    ).stdout
+    if os.getenv("ENV") == "testing":  # For testing using pytest in local environment
+        diff_output = subprocess.run(
+            ["diff", csv_prev, csv_new], capture_output=True
+        ).stdout
+    else:
+        diff_output = subprocess.run(
+            ["/bin/bash", "diff", csv_prev, csv_new], capture_output=True
+        ).stdout
     differences = subprocess.run(["echo", diff_output], capture_output=True)
 
-    print(f"\n differences: {differences}")
+    # print(f"\n differences: {differences}")
     changes_to_table = re.findall(CSV_REGEX, differences.stdout.decode())
-    print(f"\nCHANGES TO TABLE: {changes_to_table}")
+    # print(f"\nCHANGES TO TABLE: {changes_to_table}")
     filepath = f"{dt_name}_differences.csv"
     with open(f"/tmp/{filepath}", "w", newline="") as f:
         csvwriter = csv.writer(f)
         csvwriter.writerow(header[0])
         for change in changes_to_table:
             change_list = [k for k in list(change) if not "" == k]
-            print(f"\nchange_list: {change_list}")
+            # print(f"\nchange_list: {change_list}")
             csvwriter.writerow(change_list[0].split(","))
 
     if changes_to_table == "\n":
