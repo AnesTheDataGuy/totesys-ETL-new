@@ -183,21 +183,21 @@ def s3_star_schema(aws_credentials):
 
 
 class TestFindsDataBuckets:
-    @pytest.mark.it("No buckets found with correct error message")
+    @pytest.mark.it("Raises exception when no bucket is found")
     def test_no_buckets_found(self, s3_no_buckets):
+        with pytest.raises(Exception):
+            finds_data_buckets()
+        
 
-        result = finds_data_buckets()
-        assert result == "No buckets found"
-
-    @pytest.mark.it("No raw data bucket found with correct error message")
+    @pytest.mark.it("Raises exception when no raw data bucket is found")
     def test_no_raw_bucket_found(self, s3_processed):
-        result = finds_data_buckets()
-        assert result == "No raw data bucket found"
+        with pytest.raises(Exception):
+            finds_data_buckets()
 
-    @pytest.mark.it("No processed data bucket found with correct error message")
+    @pytest.mark.it("Raises exception when no processed data bucket is found")
     def test_no_processed_bucket_found(self, s3_raw):
-        result = finds_data_buckets()
-        assert result == "No processed data bucket found"
+        with pytest.raises(Exception):
+            finds_data_buckets()
 
     @pytest.mark.it("Finds both buckets and returns them")
     def test_returns_buckets_when_found(self, s3):
@@ -206,6 +206,11 @@ class TestFindsDataBuckets:
 
 
 class TestStarSchema:
+    @pytest.mark.it("Raises exception if any raw data file is missing")
+    def test_file_not_found_in_raw_data_bucket(self,s3):
+        with pytest.raises(Exception):
+            create_star_schema_from_sales_order_csv_file(prefix)
+            
     @pytest.mark.it(
         "Successfully creates star schema database if parquet files do not exist"
     )
