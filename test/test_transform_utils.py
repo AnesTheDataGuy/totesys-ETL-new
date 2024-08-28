@@ -3,8 +3,6 @@ import boto3
 import os
 from moto import mock_aws
 from src.lambda_functions.transform import finds_data_buckets, create_star_schema_from_sales_order_csv_file
-import polars as pl
-from io import BytesIO
 
 
 @pytest.fixture(scope="function")
@@ -212,7 +210,7 @@ class TestStarSchema:
         "Successfully creates star schema database if parquet files do not exist"
     )
     def test_source_data_parquet_does_not_exist(self, s3_star_schema):
-        result = create_star_schema_from_sales_order_csv_file(prefix)
+        create_star_schema_from_sales_order_csv_file(prefix)
         object_list = []
         for object in s3_star_schema.list_objects(
             Bucket="totesys-processed-data-000000"

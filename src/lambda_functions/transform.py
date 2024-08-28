@@ -1,5 +1,4 @@
-import boto3
-from src.utils.transform_utils import finds_data_buckets, create_star_schema_from_sales_order_csv_file
+from src.utils.transform_utils import create_star_schema_from_sales_order_csv_file
 
 csvs = [
     "sales_order.csv",
@@ -28,7 +27,7 @@ def lambda_handler(event, context):
     Returns:
         dict: dictionary with time prefix to be used in the load function
     """
-    
+
     prefix = event["time_prefix"]
 
     create_star_schema_from_sales_order_csv_file(prefix)

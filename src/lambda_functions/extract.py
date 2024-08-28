@@ -2,6 +2,7 @@ import boto3
 import logging
 import os
 from src.utils.extract_utils import create_time_based_path, get_secret, connect_to_bucket, connect_to_db, query_db, create_and_upload_csv, compare_csvs
+from botocore.exceptions import ClientError
 
 """
 RAW DATA BUCKET STRUCTURE:
@@ -22,8 +23,8 @@ history/
 │  ├─ month/
 │  │  ├─ day/
 │  │  │  ├─ hh:mm:ss/
-│  │  │  │  ├─ address_differences.csv 
-│  │  │  │  ├─ counterparty_differences.csv 
+│  │  │  │  ├─ address_differences.csv
+│  │  │  │  ├─ counterparty_differences.csv
 │  │  │  │  ├─ currency_differences.csv
 │  │  │  │  ├─ department_differences.csv
 │  │  │  │  ├─ design_differences.csv
@@ -129,7 +130,7 @@ def lambda_handler(event, context):
 
         logging.info(f"Successfully uploaded raw data to {raw_data_bucket}")
 
-    except Error as e:
+    except ClientError as e:
         logging.error(e)
         raise Exception(f"Connection to database failed: {e}")
 
