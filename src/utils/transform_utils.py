@@ -201,6 +201,10 @@ def create_star_schema_from_sales_order_csv_file(prefix):
         dim_currency = dim_currency.with_columns(
             currency_name=pl.Series(["Great British Pound", "US Dollars", "Euros"])
         )
+    else:
+        dim_currency = dim_currency.with_columns(
+            currency_name=None
+        )
     dim_currency = dim_currency.drop(["last_updated", "created_at"])
 
     dim_design = dim_design.sort("design_id")
