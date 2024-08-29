@@ -17,7 +17,14 @@ data "archive_file" "extract_lambda" {
 data "archive_file" "load_lambda" {
   type             = "zip"
   output_file_mode = "0666"
-  source_file      = "${path.module}/../src/lambda_functions/load.py"
+  source {
+    content  = file("${path.module}/../src/lambda_functions/load.py")
+    filename = "load.py"
+  }
+  source {
+    content  = file("${path.module}/../src/utils/load_utils.py")
+    filename = "src/utils/load_utils.py"
+  }
   output_path      = "${path.module}/../zip_code/load.zip"
 }
 
