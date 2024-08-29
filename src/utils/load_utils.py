@@ -1,6 +1,7 @@
 import boto3
 import logging
 import polars as pl
+import datetime as dt
 from botocore.exceptions import ClientError
 from io import BytesIO
 from pg8000.native import Connection
@@ -114,7 +115,6 @@ def populate_fact_sales(time_prefix):
         pl.col("agreed_delivery_date").cast(pl.String)
         ])
     
-    print("fact_sales_order")
     
     # insert into fact_sales_order table in data warehouse
     try:
@@ -135,7 +135,7 @@ def populate_fact_sales(time_prefix):
             db.run(query)
         return 'SQL table fact_sales_order successfully populated'
     except ClientError as e:
-        print(e)
+        (e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
@@ -162,8 +162,6 @@ def populate_dim_staff(time_prefix):
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
     
-    print("dim_staff")
-    
     # reorder columns
     new_order = [
         "staff_id", "first_name", "last_name", "department_name",
@@ -189,7 +187,7 @@ def populate_dim_staff(time_prefix):
             db.run(query)
         return 'SQL table dim_staff successfully populated'
     except ClientError as e:
-        print(e)
+        (e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
@@ -216,8 +214,6 @@ def populate_dim_date(time_prefix):
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
     
-    print("dim_date")
-    
     # reorder columns
     new_order = [
         "date_id", "year", "month", "day", "day_of_week",
@@ -227,24 +223,26 @@ def populate_dim_date(time_prefix):
     
     df = df.with_columns(pl.col("date_id").cast(pl.String))
     
-    print(df)
-
     # insert into dim_date table in data warehouse
     try:
         credentials = get_secret("totesys-data-warehouse-credentials-")
         db = connect_to_db(credentials)
+        query_select = f"""SELECT * FROM dim_date"""
         for row in df.iter_rows():
-            query = f'''INSERT INTO "dim_date"
-                ("date_id", "year", "month", "day",
-                "day_of_week", "day_name", "month_name", "quarter"
-                )
-                VALUES
-                {row}
-                '''
-            db.run(query)
+            row_comparison = list(row)
+            row_comparison[0] = dt.date(*map(int, row_comparison[0].split('-')))
+            if row_comparison not in db.run(query_select):
+                query_insert = f'''INSERT INTO "dim_date"
+                    ("date_id", "year", "month", "day",
+                    "day_of_week", "day_name", "month_name", "quarter"
+                    )
+                    VALUES
+                    {row}
+                    '''
+                db.run(query_insert)
         return 'SQL table dim_date successfully populated'
     except ClientError as e:
-        print(e)
+        (e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
@@ -271,7 +269,6 @@ def populate_dim_location(time_prefix):
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
     
-    print("dim_location")
     
     # reorder columns
     new_order = [
@@ -299,7 +296,7 @@ def populate_dim_location(time_prefix):
             db.run(query)
         return 'SQL table dim_location successfully populated'
     except ClientError as e:
-        print(e)
+        (e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
@@ -325,8 +322,6 @@ def populate_dim_currency(time_prefix):
 
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
-
-    print("dim_currency")
     
     # reorder columns
     new_order = [
@@ -348,7 +343,7 @@ def populate_dim_currency(time_prefix):
             db.run(query)
         return 'SQL table dim_currency successfully populated'
     except ClientError as e:
-        print(e)
+        (e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
@@ -375,9 +370,6 @@ def populate_dim_design(time_prefix):
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
 
-
-    print("dim_design")
-
     # reorder columns
     new_order = [
         "design_id", "design_name", "file_location", "file_name"
@@ -398,7 +390,7 @@ def populate_dim_design(time_prefix):
             db.run(query)
         return 'SQL table dim_design successfully populated'
     except ClientError as e:
-        print(e)
+        (e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
@@ -434,7 +426,7 @@ def populate_dim_counterparty(time_prefix):
     ]
     df = df.select(new_order)
     
-    print("dim_counterparty")
+    ("dim_counterparty")
     
     # insert into dim_counterparty table in data warehouse
     try:
@@ -457,7 +449,7 @@ def populate_dim_counterparty(time_prefix):
             db.run(query)
         return 'SQL table dim_counterparty successfully populated'
     except ClientError as e:
-        print(e)
+        (e)
         raise Exception('Could not update data warehouse')
     finally:
         if "db" in locals():
