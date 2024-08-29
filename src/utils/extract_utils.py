@@ -1,17 +1,11 @@
 import boto3
 import logging
-import os
 import csv
 import json
-import re
-import subprocess
 from datetime import datetime as dt
 from pg8000.native import Connection
 from botocore.exceptions import ClientError
 from io import StringIO
-
-# for debugging
-CSV_REGEX = r">\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\d+c\d+)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s\\)|>\s*([A-Za-z0-9\.@:\-_\s,:]+)(?=\s>)"
 
 HISTORY_PATH = "/history/"
 SOURCE_PATH = "/source/"
