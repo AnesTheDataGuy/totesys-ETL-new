@@ -177,39 +177,48 @@ def compare_csvs(dt_name):
     csv_prev = f"/tmp/{dt_name}.csv"
     csv_new = f"/tmp/{dt_name}_new.csv"
 
-    # read the header from the CSV file
-    with open(csv_prev, "r", newline="") as csv_file:  # , newline=''
-        csv_reader = csv.reader(csv_file, delimiter=",")
-        header = []
-        for row in csv_reader:
-            header.append(row)
-            break
+    with open(csv_prev, "r", newline="") as f_prev, open(csv_new, "r", newline="") as f_new:
+        reader_prev = list(csv.reader(f_prev))
+        reader_new = list(csv.reader(f_new))
 
-    if os.getenv("ENV") == "testing":  # For testing using pytest in local environment
-        diff_output = subprocess.run(
-            ["diff", csv_prev, csv_new], capture_output=True
-        ).stdout
-    else:
-        diff_output = subprocess.run(
-            ["/bin/bash", "diff", csv_prev, csv_new], capture_output=True
-        ).stdout
-    differences = subprocess.run(["echo", diff_output], capture_output=True)
+        if reader_prev and reader_new:
+            #  headers
+            header_prev = reader_prev[0]
+            header_new = reader_new[0]
+            #print(f"\n Headers: {header_prev}, \n{header_new}")
 
-    # print(f"\n differences: {differences}")
-    changes_to_table = re.findall(CSV_REGEX, differences.stdout.decode())
-    # print(f"\nCHANGES TO TABLE: {changes_to_table}")
+            if header_prev != header_new:
+                #print("CSV headers do not match!")
+                logging.error("CSV headers do not match")
+
+        else:
+            #print("NO HEADERS")
+            logging.error("CSV has no header")
+
+        # data rows
+        data_prev = reader_prev[1:]
+        data_new = reader_new[1:]
+
+    differences = []
+
+    max_len = max(len(data_prev), len(data_new)) 
+    for i in range(max_len):
+        prev_row = data_prev[i] if i < len(data_prev) else None
+        new_row = data_new[i] if i < len(data_new) else None
+
+        if prev_row != new_row:
+            if new_row:
+                #print(f"NEW ROW: {new_row}")
+                differences.append(new_row)
+    
     filepath = f"{dt_name}_differences.csv"
-    with open(f"/tmp/{filepath}", "w", newline="") as f:
-        csvwriter = csv.writer(f)
-        csvwriter.writerow(header[0])
-        for change in changes_to_table:
-            change_list = [k for k in list(change) if not "" == k]
-            # print(f"\nchange_list: {change_list}")
-            csvwriter.writerow(change_list[0].split(","))
-
-    if changes_to_table == "\n":
-        logging.info("No changes in table found")
-    else:
-        logging.info("Changes found in table")
-
+    with open(f"/tmp/{filepath}", "w", newline="") as f_diff:    
+        csvwriter = csv.writer(f_diff)
+        csvwriter.writerow(header_prev) # header
+        for diff in differences:
+            cleaned_diff = [diff[0].lstrip()] + list(diff[1:])
+            #print(f"diff: {cleaned_diff}")
+            csvwriter.writerow(cleaned_diff)
+ 
     return filepath
+
