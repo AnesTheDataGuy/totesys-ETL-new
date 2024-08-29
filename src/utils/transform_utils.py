@@ -143,6 +143,7 @@ def create_star_schema_from_sales_order_csv_file(prefix):
     ).unique()
     dim_date = dim_date.with_row_index("date_id", offset=1)
     dim_date = dim_date.with_columns(
+        pl.col("created_date").alias("date_id"),
         pl.col("created_date").dt.year().alias("year"),
         pl.col("created_date").dt.month().alias("month"),
         pl.col("created_date").dt.day().alias("day"),
@@ -151,7 +152,6 @@ def create_star_schema_from_sales_order_csv_file(prefix):
         pl.col("created_date").dt.to_string("%A").alias("day_name"),
         pl.col("created_date").dt.to_string("%B").alias("month_name"),
     )
-    dim_date = dim_date.drop(["created_date"])
 
     dim_staff = dim_staff.join(
         department, left_on="department_id", right_on="department_id"

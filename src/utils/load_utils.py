@@ -109,8 +109,13 @@ def populate_fact_sales(time_prefix):
         pl.col("created_date").cast(pl.String),
         pl.col("created_time").cast(pl.String),
         pl.col("last_updated_date").cast(pl.String),
-        pl.col("last_updated_time").cast(pl.String)
+        pl.col("last_updated_time").cast(pl.String),
+        pl.col("agreed_payment_date").cast(pl.String),
+        pl.col("agreed_delivery_date").cast(pl.String)
         ])
+    
+    print("fact_sales_order")
+    
     # insert into fact_sales_order table in data warehouse
     try:
         credentials = get_secret("totesys-data-warehouse-credentials-")
@@ -156,7 +161,9 @@ def populate_dim_staff(time_prefix):
 
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
-
+    
+    print("dim_staff")
+    
     # reorder columns
     new_order = [
         "staff_id", "first_name", "last_name", "department_name",
@@ -169,6 +176,9 @@ def populate_dim_staff(time_prefix):
         credentials = get_secret("totesys-data-warehouse-credentials-")
         db = connect_to_db(credentials)
         for row in df.iter_rows():
+            
+            row = [value.replace("'", "") if type(value) == str else value for value in row]
+            row = tuple(row)
             query = f'''INSERT INTO "dim_staff"
                 ("staff_id", "first_name", "last_name", "department_name",
                 "location", "email_address"
@@ -205,13 +215,19 @@ def populate_dim_date(time_prefix):
 
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
-
+    
+    print("dim_date")
+    
     # reorder columns
     new_order = [
         "date_id", "year", "month", "day", "day_of_week",
         "day_name", "month_name", "quarter"
     ]
     df = df.select(new_order)
+    
+    df = df.with_columns(pl.col("date_id").cast(pl.String))
+    
+    print(df)
 
     # insert into dim_date table in data warehouse
     try:
@@ -254,7 +270,9 @@ def populate_dim_location(time_prefix):
 
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
-
+    
+    print("dim_location")
+    
     # reorder columns
     new_order = [
         "location_id", "address_line_1", "address_line_2", "district", "city",
@@ -267,6 +285,10 @@ def populate_dim_location(time_prefix):
         credentials = get_secret("totesys-data-warehouse-credentials-")
         db = connect_to_db(credentials)
         for row in df.iter_rows():
+            row = ["" if value is None else value for value in row]
+            row = [value.replace("'", "") if type(value) == str else value for value in row]
+            row = tuple(row)
+            
             query = f'''INSERT INTO "dim_location"
                 ("location_id","address_line_1", "address_line_2", "district", "city",
                 "postal_code", "country", "phone"
@@ -304,6 +326,8 @@ def populate_dim_currency(time_prefix):
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
 
+    print("dim_currency")
+    
     # reorder columns
     new_order = [
         "currency_id", "currency_code", "currency_name"
@@ -350,6 +374,9 @@ def populate_dim_design(time_prefix):
 
     parquet_data_buffer = BytesIO(parquet_data)
     df = pl.read_parquet(parquet_data_buffer)
+
+
+    print("dim_design")
 
     # reorder columns
     new_order = [
@@ -406,12 +433,18 @@ def populate_dim_counterparty(time_prefix):
         "counterparty_legal_country", "counterparty_legal_phone_number"
     ]
     df = df.select(new_order)
-
+    
+    print("dim_counterparty")
+    
     # insert into dim_counterparty table in data warehouse
     try:
         credentials = get_secret("totesys-data-warehouse-credentials-")
         db = connect_to_db(credentials)
         for row in df.iter_rows():
+            row = ["" if value is None else value for value in row]
+            row = [value.replace("'", "") if type(value) == str else value for value in row]
+            row = tuple(row)
+            
             query = f'''INSERT INTO "dim_counterparty"
                 ("counterparty_id", "counterparty_legal_name", "counterparty_legal_address_line_1",
                 "counterparty_legal_address_line_2", "counterparty_legal_district",
